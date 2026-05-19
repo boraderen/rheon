@@ -1,0 +1,26 @@
+.DS_Store
+.hypothesis/
+
+# Python cache / bytecode
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Build artefacts
+build/
+dist/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+
+# Editor
+.vscode/
+.idea/
