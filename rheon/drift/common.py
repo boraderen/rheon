@@ -23,12 +23,13 @@ class DriftPlan:
 
 def normalize_perspective_drifts(
     drifts: list[dict[str, Any]],
-    default_perspective: str,
 ) -> list[dict[str, Any]]:
     result = []
     for drift in drifts:
         enriched = dict(drift)
-        enriched.setdefault("perspective", default_perspective)
+        missing = [key for key in ("perspective", "subtype", "drift_type") if key not in enriched]
+        if missing:
+            raise ValueError(f"each drift must include {', '.join(missing)}")
         result.append(enriched)
     return result
 
@@ -40,9 +41,8 @@ def sample_drift_plans(
     horizon_start: datetime,
     horizon_end: datetime,
     rng: np.random.Generator,
-    default_perspective: str,
 ) -> list[DriftPlan]:
-    normalized = normalize_perspective_drifts(drifts, default_perspective)
+    normalized = normalize_perspective_drifts(drifts)
     by_perspective: dict[str, list[dict[str, Any]]] = {}
     for drift in normalized:
         by_perspective.setdefault(str(drift["perspective"]), []).append(drift)
@@ -54,7 +54,7 @@ def sample_drift_plans(
         for index, spec in enumerate(perspective_drifts):
             fraction = _change_fraction(spec, index, count, rng)
             change_point = horizon_start + timedelta(seconds=horizon_seconds * fraction)
-            drift_type = str(spec.get("drift_type", "sudden"))
+            drift_type = str(spec["drift_type"])
             overlap_start: datetime | None = None
             overlap_end: datetime | None = None
             if is_gradual(drift_type):
@@ -73,7 +73,7 @@ def sample_drift_plans(
                 DriftPlan(
                     drift_id=f"d{len(plans) + 1:02d}",
                     perspective=perspective,
-                    subtype=str(spec.get("subtype", "unknown")),
+                    subtype=str(spec["subtype"]),
                     drift_type=drift_type,
                     change_point=change_point,
                     overlap_start=overlap_start,

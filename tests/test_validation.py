@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import replace
-
 from pm4py.read import read_xes
 from pm4py.stats import get_event_attributes, get_trace_attributes
 
@@ -13,15 +11,8 @@ from rheon.validation import validate_xes, validation_passed
 
 
 def test_validate_generated_xes_passes(tmp_path, small_config):
-    config = replace(small_config, output_path=str(tmp_path))
     out = tmp_path / "valid.xes"
-    generate_and_write_log(
-        config,
-        [{"perspective": "data", "subtype": "numeric", "drift_type": "sudden"}],
-        out,
-        default_perspective="control_flow",
-        rng=make_rng(31),
-    )
+    generate_and_write_log(small_config, [{"perspective": "data", "subtype": "numeric", "drift_type": "sudden"}], out, rng=make_rng(31))
 
     issues = validate_xes(out)
 

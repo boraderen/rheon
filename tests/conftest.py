@@ -8,7 +8,6 @@ from rheon.config import GeneratorConfig, make_rng
 @pytest.fixture
 def small_config() -> GeneratorConfig:
     return GeneratorConfig(
-        num_logs=1,
         num_traces=24,
         min_trace_length=3,
         max_trace_length=8,

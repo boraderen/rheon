@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -49,12 +49,11 @@ LEGACY_TO_NATIVE_COLUMNS = {
 
 
 DEFAULT_REGIONS = ["DE-NRW", "DE-BY", "DE-HE", "DE-BW", "DE-BE"]
+DEFAULT_START_TIMESTAMP = datetime(2020, 1, 1, tzinfo=timezone.utc)
 
 
 @dataclass(frozen=True)
 class GeneratorConfig:
-    output_path: str = "data/generated/"
-    num_logs: int = 10
     global_seed: int = 42
 
     num_traces: int = 2000
@@ -93,42 +92,11 @@ class GeneratorConfig:
 
     gradual_overlap_fraction: float = 0.10
     recurring_period_fraction: float = 0.20
-    start_timestamp: datetime = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    start_timestamp: datetime = DEFAULT_START_TIMESTAMP
 
     @classmethod
     def from_uppercase(cls, values: dict[str, Any]) -> "GeneratorConfig":
-        mapping = {
-            "OUTPUT_PATH": "output_path",
-            "NUM_LOGS": "num_logs",
-            "GLOBAL_SEED": "global_seed",
-            "NUM_TRACES": "num_traces",
-            "MIN_TRACE_LENGTH": "min_trace_length",
-            "MAX_TRACE_LENGTH": "max_trace_length",
-            "AVG_TRACE_LENGTH": "avg_trace_length",
-            "TRACE_LENGTH_VARIANCE": "trace_length_variance",
-            "HORIZON_MIN_DAYS": "horizon_min_days",
-            "HORIZON_MAX_DAYS": "horizon_max_days",
-            "MIN_ACTIVITIES": "min_activities",
-            "MAX_ACTIVITIES": "max_activities",
-            "TREE_DEPTH_MIN": "tree_depth_min",
-            "TREE_DEPTH_MAX": "tree_depth_max",
-            "SEQUENCE_WEIGHT": "sequence_weight",
-            "CHOICE_WEIGHT": "choice_weight",
-            "PARALLEL_WEIGHT": "parallel_weight",
-            "LOOP_WEIGHT": "loop_weight",
-            "OR_WEIGHT": "or_weight",
-            "SILENT_TRANSITION_PROB": "silent_transition_prob",
-            "DUPLICATE_ACTIVITY_PROB": "duplicate_activity_prob",
-            "NUM_RESOURCES": "num_resources",
-            "NUM_ROLES": "num_roles",
-            "NUM_CASE_TYPES": "num_case_types",
-            "REGIONS": "regions",
-            "INTER_ARRIVAL_MEAN_MIN": "inter_arrival_mean_min",
-            "SERVICE_TIME_MEAN_MIN": "service_time_mean_min",
-            "SERVICE_TIME_STD_MIN": "service_time_std_min",
-            "NOISE_PROBABILITY": "noise_probability",
-            "NOISE_SIMILAR_VS_RANDOM": "noise_similar_vs_random",
-        }
+        mapping = {config_field.name.upper(): config_field.name for config_field in fields(cls)}
         kwargs = {attr: values[key] for key, attr in mapping.items() if key in values}
         return cls(**kwargs)
 

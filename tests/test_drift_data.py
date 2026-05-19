@@ -19,12 +19,11 @@ from rheon.drift.data import build_data_runtime
 def test_data_drift_subtypes_change_state_and_metadata(small_config, rng, subtype, affected):
     start, end = sample_horizon(small_config, rng)
     plans = sample_drift_plans(
-        [{"subtype": subtype, "drift_type": "sudden", "change_point": 0.5}],
+        [{"perspective": "data", "subtype": subtype, "drift_type": "sudden", "change_point": 0.5}],
         config=small_config,
         horizon_start=start,
         horizon_end=end,
         rng=rng,
-        default_perspective="data",
     )
     runtime = build_data_runtime(small_config, plans, rng)
 
@@ -40,12 +39,11 @@ def test_data_drift_subtypes_change_state_and_metadata(small_config, rng, subtyp
 def test_data_incremental_drift_has_multiple_versions(small_config, rng):
     start, end = sample_horizon(small_config, rng)
     plans = sample_drift_plans(
-        [{"subtype": "numeric", "drift_type": "incremental", "change_point": 0.5, "num_versions": 4}],
+        [{"perspective": "data", "subtype": "numeric", "drift_type": "incremental", "change_point": 0.5, "num_versions": 4}],
         config=small_config,
         horizon_start=start,
         horizon_end=end,
         rng=rng,
-        default_perspective="data",
     )
     runtime = build_data_runtime(small_config, plans, rng)
 

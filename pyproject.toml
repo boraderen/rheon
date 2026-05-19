@@ -3,11 +3,11 @@ name = "rheon"
 version = "0.1.0"
 description = "Synthetic multi-perspective concept drift log generation"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.10"
 dependencies = [
-    "numpy>=2.4.4",
-    "pandas>=3.0.2",
-    "pm4py",
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "pm4py>=2.7",
 ]
 
 [dependency-groups]

@@ -17,7 +17,7 @@ def play_trace_pool(
     rng: np.random.Generator,
 ) -> list[list[str]]:
     target = max(1, num_traces)
-    candidates = _valid_extensive_traces(tree, target, config)
+    candidates = _valid_extensive_traces(tree, target, config, rng)
     candidates.extend(_valid_stochastic_traces(tree, target, config, rng))
     buckets = _bucket_by_length(candidates, config)
     if not buckets:
@@ -46,19 +46,21 @@ def _valid_extensive_traces(
     tree: ProcessTree,
     target: int,
     config: GeneratorConfig,
+    rng: np.random.Generator,
 ) -> list[list[str]]:
     max_limit = min(50_000, max(100, target * 2))
     try:
-        log = playout_alg.apply(
-            tree,
-            variant=playout_alg.Variants.EXTENSIVE,
-            parameters={
-                "min_trace_length": config.min_trace_length,
-                "max_trace_length": config.max_trace_length,
-                "max_loop_occ": max(1, config.max_trace_length // 2),
-                "max_limit_num_traces": max_limit,
-            },
-        )
+        with pm4py_seed(next_pm4py_seed(rng)):
+            log = playout_alg.apply(
+                tree,
+                variant=playout_alg.Variants.EXTENSIVE,
+                parameters={
+                    "min_trace_length": config.min_trace_length,
+                    "max_trace_length": config.max_trace_length,
+                    "max_loop_occ": max(1, config.max_trace_length // 2),
+                    "max_limit_num_traces": max_limit,
+                },
+            )
     except Exception:
         return []
     return [

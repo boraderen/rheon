@@ -19,12 +19,11 @@ from rheon.drift.inter_case import build_inter_case_runtime, generate_case_arriv
 def test_inter_case_drift_subtypes_are_recorded(small_config, rng, subtype, expected_key):
     start, end = sample_horizon(small_config, rng)
     plans = sample_drift_plans(
-        [{"subtype": subtype, "drift_type": "sudden", "change_point": 0.5}],
+        [{"perspective": "inter_case", "subtype": subtype, "drift_type": "sudden", "change_point": 0.5}],
         config=small_config,
         horizon_start=start,
         horizon_end=end,
         rng=rng,
-        default_perspective="inter_case",
     )
     runtime = build_inter_case_runtime(small_config, plans, rng)
 
@@ -38,12 +37,11 @@ def test_inter_case_drift_subtypes_are_recorded(small_config, rng, subtype, expe
 def test_arrival_rate_drift_changes_case_count_from_fixed_target(small_config, rng):
     start, end = sample_horizon(small_config, rng)
     plans = sample_drift_plans(
-        [{"subtype": "arrival_rate", "drift_type": "sudden", "change_point": 0.5}],
+        [{"perspective": "inter_case", "subtype": "arrival_rate", "drift_type": "sudden", "change_point": 0.5}],
         config=small_config,
         horizon_start=start,
         horizon_end=end,
         rng=rng,
-        default_perspective="inter_case",
     )
     runtime = build_inter_case_runtime(small_config, plans, rng)
     arrivals = generate_case_arrivals(small_config, runtime, start, end, rng)

@@ -1,39 +1,82 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import datetime, timezone
 
 import pandas as pd
 import pytest
 from hypothesis import given, settings, strategies as st
 
-from scripts import generate_control_flow_log, generate_data_log, generate_inter_case_log, generate_multi_perspective_log, generate_resource_log
-from rheon.composer import generate_and_write_log, generate_log
+import rheon
+from rheon.composer import generate_log as generate_log_in_memory
 from rheon.config import GeneratorConfig, make_rng
 from rheon.timestamp_assignment import assign_event_times
 from rheon.validation import validate_xes, validation_passed
 
 
+def _fixed_pipeline_options() -> dict[str, object]:
+    return {
+        "num_traces": 12,
+        "min_trace_length": 3,
+        "max_trace_length": 5,
+        "avg_trace_length": 4,
+        "trace_length_variance": 1,
+        "min_activities": 4,
+        "max_activities": 4,
+        "tree_generation_attempts": 1,
+        "sequence_weight": 1.0,
+        "choice_weight": 0.0,
+        "parallel_weight": 0.0,
+        "loop_weight": 0.0,
+        "or_weight": 0.0,
+        "silent_transition_prob": 0.0,
+        "duplicate_activity_prob": 0.0,
+        "num_resources": 4,
+        "num_roles": 2,
+        "num_case_types": 2,
+        "horizon_min_days": 1,
+        "horizon_max_days": 1,
+        "noise_probability": 0.0,
+        "global_seed": 123,
+    }
+
+
 @pytest.mark.parametrize(
-    "module,default_perspective,prefix",
+    "drifts,prefix",
     [
-        (generate_control_flow_log, "control_flow", "control_flow"),
-        (generate_resource_log, "resource", "resource"),
-        (generate_inter_case_log, "inter_case", "inter_case"),
-        (generate_data_log, "data", "data"),
-        (generate_multi_perspective_log, "control_flow", "multi"),
+        (
+            [{"perspective": "control_flow", "subtype": "tree_mutation", "drift_type": "sudden", "change_point": 0.5, "change_proportion": 0.05}],
+            "control_flow",
+        ),
+        (
+            [{"perspective": "resource", "subtype": "pool_size", "drift_type": "sudden", "change_point": 0.5}],
+            "resource",
+        ),
+        (
+            [{"perspective": "inter_case", "subtype": "arrival_rate", "drift_type": "sudden", "change_point": 0.5}],
+            "inter_case",
+        ),
+        (
+            [{"perspective": "data", "subtype": "numeric", "drift_type": "sudden", "change_point": 0.5}],
+            "data",
+        ),
+        (
+            [
+                {"perspective": "resource", "subtype": "pool_size", "drift_type": "sudden", "change_point": 0.5},
+                {"perspective": "data", "subtype": "numeric", "drift_type": "sudden", "change_point": 0.5},
+            ],
+            "multi",
+        ),
     ],
+    ids=["control_flow", "resource", "inter_case", "data", "multi"],
 )
-def test_full_pipeline_for_each_generation_script(tmp_path, small_config, module, default_perspective, prefix):
-    config = replace(small_config, output_path=str(tmp_path), noise_probability=0.0)
+def test_full_pipeline_for_small_fixed_scenarios(tmp_path, small_config, drifts, prefix):
     out = tmp_path / f"{prefix}.xes"
 
-    generate_and_write_log(
-        config,
-        module.DRIFTS,
+    rheon.generate_log(
+        drifts,
         out,
-        default_perspective=default_perspective,
-        rng=make_rng(101),
+        rng=101,
+        **_fixed_pipeline_options(),
     )
     issues = validate_xes(out)
 
@@ -43,18 +86,17 @@ def test_full_pipeline_for_each_generation_script(tmp_path, small_config, module
 def test_reproducibility_same_seed_identical_log(small_config):
     drifts = [{"perspective": "data", "subtype": "numeric", "drift_type": "sudden"}]
 
-    first = generate_log(small_config, drifts)
-    second = generate_log(small_config, drifts)
+    first = generate_log_in_memory(small_config, drifts)
+    second = generate_log_in_memory(small_config, drifts)
 
     pd.testing.assert_frame_equal(first.dataframe, second.dataframe)
     assert first.metadata["drifts"] == second.metadata["drifts"]
 
 
 def test_control_flow_metadata_uses_observed_variant_counts_only(small_config):
-    generated = generate_log(
+    generated = generate_log_in_memory(
         small_config,
-        [{"subtype": "tree_mutation", "drift_type": "sudden"}],
-        default_perspective="control_flow",
+        [{"perspective": "control_flow", "subtype": "tree_mutation", "drift_type": "sudden"}],
         rng=make_rng(55),
     )
 

@@ -20,12 +20,11 @@ from rheon.drift.resource import build_resource_runtime
 def test_resource_drift_subtypes_change_state(small_config, rng, subtype, expected_key):
     start, end = sample_horizon(small_config, rng)
     plans = sample_drift_plans(
-        [{"subtype": subtype, "drift_type": "sudden", "change_point": 0.5}],
+        [{"perspective": "resource", "subtype": subtype, "drift_type": "sudden", "change_point": 0.5}],
         config=small_config,
         horizon_start=start,
         horizon_end=end,
         rng=rng,
-        default_perspective="resource",
     )
     runtime = build_resource_runtime(small_config, plans, small_config.activity_pool[:5], rng)
 
@@ -38,12 +37,11 @@ def test_resource_drift_subtypes_change_state(small_config, rng, subtype, expect
 def test_resource_gradual_runtime_samples_both_versions(small_config, rng):
     start, end = sample_horizon(small_config, rng)
     plans = sample_drift_plans(
-        [{"subtype": "pool_size", "drift_type": "gradual_linear", "change_point": 0.5}],
+        [{"perspective": "resource", "subtype": "pool_size", "drift_type": "gradual_linear", "change_point": 0.5}],
         config=small_config,
         horizon_start=start,
         horizon_end=end,
         rng=rng,
-        default_perspective="resource",
     )
     runtime = build_resource_runtime(small_config, plans, small_config.activity_pool[:5], rng)
     plan = plans[0]
@@ -63,6 +61,7 @@ def test_workload_distribution_targets_selected_resources(small_config, rng):
     start, end = sample_horizon(small_config, rng)
     plans = sample_drift_plans(
         [{
+            "perspective": "resource",
             "subtype": "workload_distribution",
             "drift_type": "sudden",
             "change_point": 0.5,
@@ -72,7 +71,6 @@ def test_workload_distribution_targets_selected_resources(small_config, rng):
         horizon_start=start,
         horizon_end=end,
         rng=rng,
-        default_perspective="resource",
     )
     runtime = build_resource_runtime(small_config, plans, small_config.activity_pool[:5], rng)
     final_state = runtime.drifts[0].final_state

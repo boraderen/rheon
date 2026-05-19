@@ -52,7 +52,6 @@ def generate_log(
     drifts: list[dict[str, Any]],
     *,
     log_name: str = "rheon_log",
-    default_perspective: str = "control_flow",
     rng: np.random.Generator | None = None,
 ) -> GeneratedLog:
     rng = make_rng(config.global_seed) if rng is None else rng
@@ -63,7 +62,6 @@ def generate_log(
         horizon_start=horizon_start,
         horizon_end=horizon_end,
         rng=rng,
-        default_perspective=default_perspective,
     )
 
     control_flow = build_control_flow_model(config, plans, rng)
@@ -167,7 +165,6 @@ def generate_and_write_log(
     output_path: str | Path,
     *,
     log_name: str | None = None,
-    default_perspective: str = "control_flow",
     rng: np.random.Generator | None = None,
 ) -> GeneratedLog:
     name = log_name or Path(output_path).stem
@@ -175,7 +172,6 @@ def generate_and_write_log(
         config,
         drifts,
         log_name=name,
-        default_perspective=default_perspective,
         rng=rng,
     )
     return write_generated_log(generated, output_path)

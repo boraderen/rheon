@@ -377,7 +377,8 @@
     <a class="nav-item active" data-target="welcome">Welcome</a>
     <a class="nav-item" data-target="quick-start">Quick start</a>
     <a class="nav-item" data-target="installation">Installation</a>
-    <a class="nav-item" data-target="scripts">Generator scripts</a>
+    <a class="nav-item" data-target="package-structure">Package structure</a>
+    <a class="nav-item" data-target="api">API</a>
     <a class="nav-item" data-target="drift-types">Drift types</a>
     <div class="nav-group" id="group-perspectives">
       <a class="nav-item" data-target="perspectives">Drift perspectives</a>
@@ -388,8 +389,7 @@
         <a class="nav-item" data-target="perspective-data">Data</a>
       </div>
     </div>
-    <a class="nav-item" data-target="parameters">Parameters</a>
-    <a class="nav-item" data-target="config">Configuration</a>
+    <a class="nav-item" data-target="parameters">Drift parameters</a>
     <a class="nav-item" data-target="output">Output</a>
     <a class="nav-item" data-target="examples">Examples</a>
   </aside>
@@ -414,7 +414,7 @@
             </svg>
           </div>
           <h3>Quick start</h3>
-          <p>Run a generator script and produce your first labeled XES log in under a minute.</p>
+          <p>Use the API to produce your first labeled XES log.</p>
         </a>
 
         <a class="card" data-target="installation">
@@ -427,6 +427,11 @@
           </div>
           <h3>Installation</h3>
           <p>Set up the project, dependencies, and the <code>uv</code> runtime.</p>
+        </a>
+
+        <a class="card" data-target="package-structure">
+          <h3>Package structure</h3>
+          <p>See how the public API, drift engines, scripts, and tests are split.</p>
         </a>
       </div>
 
@@ -442,12 +447,12 @@
           <p>Where the change occurs: control flow, resources, arrivals, or data.</p>
         </a>
         <a class="card" data-target="parameters">
-          <h3>Parameters</h3>
+          <h3>Drift parameters</h3>
           <p>Every key in a <code>DRIFTS</code> entry, and when to use it.</p>
         </a>
         <a class="card" data-target="output">
           <h3>Output</h3>
-          <p>XES files, metadata sidecars, and the columns Driftify writes.</p>
+          <p>XES files, metadata sidecars, and the columns Rheon writes.</p>
         </a>
       </div>
     </section>
@@ -455,19 +460,19 @@
     <!-- Quick start -->
     <section class="page" id="quick-start">
       <h1>Quick start</h1>
-      <p class="subtitle">Generate a labeled log from a generator script.</p>
+      <p class="subtitle">Generate a labeled log with the simple API.</p>
 
-      <p>Edit the constants at the top of a generator script, then run it from the repository root.</p>
-      <pre><code>uv run python scripts/generate_resource_log.py
-uv run python scripts/validate_log.py data/resource/resource_001.xes</code></pre>
+      <p>Choose drift definitions, pass any generator options you need, then write a log.</p>
+      <pre><code>import rheon
 
-      <p>Each generated log includes machine-readable drift metadata as XES log attributes and a sidecar
-        summary next to the <code>.xes</code> file.</p>
+drifts = [{"perspective": "data", "subtype": "numeric", "drift_type": "sudden"}]
 
-      <div class="note">
-        The API is driven entirely by the scripts in <code>scripts/</code> for now. Edit a script,
-        run it, inspect the output.
-      </div>
+rheon.generate_log(
+    drifts,
+    "data/example/data_001.xes",
+    num_traces=100,
+    global_seed=7,
+)</code></pre>
     </section>
 
     <!-- Installation -->
@@ -492,36 +497,167 @@ uv sync</code></pre>
       <pre><code>uv run python scripts/generate_control_flow_log.py</code></pre>
     </section>
 
-    <!-- Generator scripts -->
-    <section class="page" id="scripts">
-      <h1>Generator scripts</h1>
-      <p class="subtitle">Each script targets one perspective of drift.</p>
+    <!-- Package structure -->
+    <section class="page" id="package-structure">
+      <h1>Package structure</h1>
+      <p class="subtitle">How the public API and implementation are split.</p>
 
-      <div class="card-grid">
-        <div class="card">
-          <h3><code>generate_control_flow_log.py</code></h3>
-          <p>Changes the process tree. Use for activity, variant, and ordering drift.</p>
-        </div>
-        <div class="card">
-          <h3><code>generate_resource_log.py</code></h3>
-          <p>Changes resource assignment, workload, handover, pool size, or service speed.</p>
-        </div>
-        <div class="card">
-          <h3><code>generate_inter_case_log.py</code></h3>
-          <p>Changes case arrival behavior, burstiness, case mix, or emergent concurrency.</p>
-        </div>
-        <div class="card">
-          <h3><code>generate_data_log.py</code></h3>
-          <p>Changes case-level numeric and categorical attributes.</p>
-        </div>
-        <div class="card">
-          <h3><code>generate_multi_perspective_log.py</code></h3>
-          <p>Combines perspectives. Add a <code>perspective</code> key to each drift entry.</p>
-        </div>
-        <div class="card">
-          <h3><code>validate_log.py</code></h3>
-          <p>Validates a generated XES file and prints its drift metadata summary.</p>
-        </div>
+      <p>The package exposes <code>rheon.generate_log</code> from <code>rheon/__init__.py</code>. Everything else stays
+        behind that one entrypoint.</p>
+
+      <pre><code>rheon/
+  __init__.py      public export: generate_log
+  api.py           explicit public signature
+  composer.py      generation pipeline and XES writing
+  config.py        schema keys and generator config
+  metadata.py      drift metadata payloads
+  validation.py    XES validation helpers
+  xes_writer.py    XES serialization
+  drift/
+    common.py      drift planning
+    control_flow.py
+    resource.py
+    inter_case.py
+    data.py
+scripts/
+  generate_*.py    editable examples
+tests/
+  test_*.py        behavior coverage</code></pre>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Path</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>rheon/__init__.py</code></td><td>Exports the public API.</td></tr>
+          <tr><td><code>rheon/api.py</code></td><td>Defines the clean user-facing signature.</td></tr>
+          <tr><td><code>rheon/composer.py</code></td><td>Builds the log data and metadata.</td></tr>
+          <tr><td><code>rheon/drift/</code></td><td>Perspective-specific drift logic.</td></tr>
+          <tr><td><code>scripts/</code></td><td>Editable generator examples.</td></tr>
+          <tr><td><code>tests/</code></td><td>Behavior and validation coverage.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- API -->
+    <section class="page" id="api">
+      <h1>API</h1>
+      <p class="subtitle">Function signature and generator options for <code>rheon.generate_log()</code>.</p>
+
+      <h3>Signature</h3>
+      <pre><code>rheon.generate_log(
+    drifts,
+    output_path,
+    *,
+    log_name=None,
+    rng=None,
+    global_seed=42,
+    num_traces=2000,
+    min_trace_length=5,
+    max_trace_length=50,
+    avg_trace_length=15,
+    trace_length_variance=25,
+    horizon_min_days=30,
+    horizon_max_days=365,
+    min_activities=6,
+    max_activities=20,
+    tree_depth_min=3,
+    tree_depth_max=6,
+    tree_generation_attempts=32,
+    sequence_weight=0.70,
+    choice_weight=0.20,
+    parallel_weight=0.07,
+    loop_weight=0.02,
+    or_weight=0.01,
+    silent_transition_prob=0.05,
+    duplicate_activity_prob=0.0,
+    num_resources=20,
+    num_roles=5,
+    num_case_types=3,
+    regions=None,
+    inter_arrival_mean_min=5.0,
+    service_time_mean_min=10.0,
+    service_time_std_min=5.0,
+    noise_probability=0.05,
+    noise_similar_vs_random=0.5,
+    gradual_overlap_fraction=0.10,
+    recurring_period_fraction=0.20,
+    start_timestamp=None,
+)</code></pre>
+
+      <p><code>drifts</code> is a list of dictionaries. Each entry must include <code>subtype</code>,
+        <code>drift_type</code>, and <code>perspective</code>; see <a href="#parameters">Drift parameters</a>.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Argument</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>drifts</code></td>
+            <td>Yes</td>
+            <td>List of drift dictionaries that describe the scenarios to generate.</td>
+          </tr>
+          <tr>
+            <td><code>output_path</code></td>
+            <td>Yes</td>
+            <td>Destination for the generated <code>.xes</code> file and metadata sidecar.</td>
+          </tr>
+          <tr>
+            <td><code>log_name</code></td>
+            <td>No</td>
+            <td>Overrides the generated log name used in metadata and file naming.</td>
+          </tr>
+          <tr>
+            <td><code>rng</code></td>
+            <td>No</td>
+            <td>Optional integer seed or <code>numpy.random.Generator</code>.</td>
+          </tr>
+          <tr><td><code>global_seed</code></td><td>No</td><td>Seed used when <code>rng</code> is omitted.</td></tr>
+          <tr><td><code>num_traces</code></td><td>No</td><td>Number of cases to generate.</td></tr>
+          <tr><td><code>min_trace_length</code></td><td>No</td><td>Shortest trace length.</td></tr>
+          <tr><td><code>max_trace_length</code></td><td>No</td><td>Longest trace length.</td></tr>
+          <tr><td><code>avg_trace_length</code></td><td>No</td><td>Average trace length target.</td></tr>
+          <tr><td><code>trace_length_variance</code></td><td>No</td><td>Variance used for trace-length sampling.</td></tr>
+          <tr><td><code>horizon_min_days</code></td><td>No</td><td>Lower bound for the sampled horizon.</td></tr>
+          <tr><td><code>horizon_max_days</code></td><td>No</td><td>Upper bound for the sampled horizon.</td></tr>
+          <tr><td><code>min_activities</code></td><td>No</td><td>Minimum process-tree activities.</td></tr>
+          <tr><td><code>max_activities</code></td><td>No</td><td>Maximum process-tree activities.</td></tr>
+          <tr><td><code>tree_depth_min</code></td><td>No</td><td>Minimum tree depth.</td></tr>
+          <tr><td><code>tree_depth_max</code></td><td>No</td><td>Maximum tree depth.</td></tr>
+          <tr><td><code>tree_generation_attempts</code></td><td>No</td><td>Tree generator retries.</td></tr>
+          <tr><td><code>sequence_weight</code></td><td>No</td><td>Process-tree sequence operator weight.</td></tr>
+          <tr><td><code>choice_weight</code></td><td>No</td><td>Process-tree choice operator weight.</td></tr>
+          <tr><td><code>parallel_weight</code></td><td>No</td><td>Process-tree parallel operator weight.</td></tr>
+          <tr><td><code>loop_weight</code></td><td>No</td><td>Process-tree loop operator weight.</td></tr>
+          <tr><td><code>or_weight</code></td><td>No</td><td>Process-tree OR operator weight.</td></tr>
+          <tr><td><code>silent_transition_prob</code></td><td>No</td><td>Silent-transition probability.</td></tr>
+          <tr><td><code>duplicate_activity_prob</code></td><td>No</td><td>Duplicate-activity probability.</td></tr>
+          <tr><td><code>num_resources</code></td><td>No</td><td>Number of resources.</td></tr>
+          <tr><td><code>num_roles</code></td><td>No</td><td>Number of roles.</td></tr>
+          <tr><td><code>num_case_types</code></td><td>No</td><td>Number of case types.</td></tr>
+          <tr><td><code>regions</code></td><td>No</td><td>Region labels.</td></tr>
+          <tr><td><code>inter_arrival_mean_min</code></td><td>No</td><td>Mean inter-arrival time.</td></tr>
+          <tr><td><code>service_time_mean_min</code></td><td>No</td><td>Mean service duration.</td></tr>
+          <tr><td><code>service_time_std_min</code></td><td>No</td><td>Service-duration standard deviation.</td></tr>
+          <tr><td><code>noise_probability</code></td><td>No</td><td>Noise injection rate.</td></tr>
+          <tr><td><code>noise_similar_vs_random</code></td><td>No</td><td>Noise similarity mix.</td></tr>
+          <tr><td><code>gradual_overlap_fraction</code></td><td>No</td><td>Overlap width for gradual drift.</td></tr>
+          <tr><td><code>recurring_period_fraction</code></td><td>No</td><td>Period length for recurring drift.</td></tr>
+          <tr><td><code>start_timestamp</code></td><td>No</td><td>Start of the generated horizon.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <code>generate_log()</code> returns a <code>GeneratedLog</code> with the in-memory dataframe, metadata payload,
+        and written XES path.
       </div>
     </section>
 
@@ -547,12 +683,12 @@ uv sync</code></pre>
           <tr>
             <td><code>gradual_linear</code> / <code>gradual</code></td>
             <td>Old and new behavior overlap. Probability of new behavior rises linearly.</td>
-            <td>Transition width uses <code>GeneratorConfig.gradual_overlap_fraction</code>, default <code>0.10</code>.</td>
+            <td>Transition width uses the <code>gradual_overlap_fraction</code> option, default <code>0.10</code>.</td>
           </tr>
           <tr>
             <td><code>gradual_exponential</code></td>
             <td>Overlapping behaviors. New behavior starts slowly and rises faster near the end.</td>
-            <td>Transition width uses <code>GeneratorConfig.gradual_overlap_fraction</code>, default <code>0.10</code>.</td>
+            <td>Transition width uses the <code>gradual_overlap_fraction</code> option, default <code>0.10</code>.</td>
           </tr>
           <tr>
             <td><code>incremental</code></td>
@@ -562,7 +698,7 @@ uv sync</code></pre>
           <tr>
             <td><code>recurring</code></td>
             <td>Alternates between old and new behavior for a period, then settles on the new behavior.</td>
-            <td><code>period_days</code>: length of one phase. Default uses <code>GeneratorConfig.recurring_period_fraction</code>, <code>0.20</code>.</td>
+            <td><code>period_days</code>: length of one phase. Default uses the <code>recurring_period_fraction</code> option, <code>0.20</code>.</td>
           </tr>
         </tbody>
       </table>
@@ -752,8 +888,8 @@ uv sync</code></pre>
 
     <!-- Parameters -->
     <section class="page" id="parameters">
-      <h1>Parameters</h1>
-      <p class="subtitle">Every key accepted in a <code>DRIFTS</code> entry.</p>
+      <h1>Drift parameters</h1>
+      <p class="subtitle">Required and optional keys in a <code>DRIFTS</code> entry.</p>
 
       <p>Each entry in <code>DRIFTS</code> is a Python dictionary.</p>
 
@@ -775,21 +911,21 @@ uv sync</code></pre>
           </tr>
           <tr>
             <td><code>drift_type</code></td>
-            <td>No</td>
+            <td>Yes</td>
             <td>All drifts</td>
-            <td><code>sudden</code>, <code>gradual_linear</code>, <code>gradual_exponential</code>, <code>incremental</code>, or <code>recurring</code>. Default: <code>sudden</code>.</td>
+            <td><code>sudden</code>, <code>gradual_linear</code>, <code>gradual_exponential</code>, <code>incremental</code>, or <code>recurring</code>.</td>
+          </tr>
+          <tr>
+            <td><code>perspective</code></td>
+            <td>Yes</td>
+            <td>All drifts</td>
+            <td><code>control_flow</code>, <code>resource</code>, <code>inter_case</code>, or <code>data</code>.</td>
           </tr>
           <tr>
             <td><code>change_point</code></td>
             <td>No</td>
             <td>All drifts</td>
-            <td>Fraction of the generated horizon, clamped to 0.05–0.95. <code>0.5</code> is the midpoint. If omitted, Driftify places drifts within their perspective-specific slots.</td>
-          </tr>
-          <tr>
-            <td><code>perspective</code></td>
-            <td>Only multi-perspective</td>
-            <td>Multi-perspective logs</td>
-            <td><code>control_flow</code>, <code>resource</code>, <code>inter_case</code>, or <code>data</code>. Single-perspective scripts provide a default.</td>
+            <td>Fraction of the generated horizon, clamped to 0.05–0.95. <code>0.5</code> is the midpoint. If omitted, Rheon places drifts within their perspective-specific slots.</td>
           </tr>
           <tr>
             <td><code>num_versions</code></td>
@@ -801,7 +937,7 @@ uv sync</code></pre>
             <td><code>period_days</code></td>
             <td>No</td>
             <td><code>drift_type="recurring"</code></td>
-            <td>Length of one recurrence phase. If omitted, derived from <code>GeneratorConfig.recurring_period_fraction</code>.</td>
+            <td>Length of one recurrence phase. If omitted, derived from <code>recurring_period_fraction</code>.</td>
           </tr>
           <tr>
             <td><code>change_proportion</code></td>
@@ -826,51 +962,6 @@ uv sync</code></pre>
             <td>No</td>
             <td><code>workload_distribution</code>, <code>service_time</code></td>
             <td>List of resource ids such as <code>["res_001"]</code>, or <code>"all"</code>. Default: <code>"all"</code>.</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Configuration -->
-    <section class="page" id="config">
-      <h1>Configuration</h1>
-      <p class="subtitle">Constants edited at the top of generator scripts.</p>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Group</th>
-            <th>Constants</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Output</td>
-            <td><code>OUTPUT_PATH</code>, <code>NUM_LOGS</code>, <code>GLOBAL_SEED</code></td>
-          </tr>
-          <tr>
-            <td>Trace size</td>
-            <td><code>NUM_TRACES</code>, <code>MIN_TRACE_LENGTH</code>, <code>MAX_TRACE_LENGTH</code>, <code>AVG_TRACE_LENGTH</code>, <code>TRACE_LENGTH_VARIANCE</code></td>
-          </tr>
-          <tr>
-            <td>Time horizon</td>
-            <td><code>HORIZON_MIN_DAYS</code>, <code>HORIZON_MAX_DAYS</code></td>
-          </tr>
-          <tr>
-            <td>Process tree</td>
-            <td><code>MIN_ACTIVITIES</code>, <code>MAX_ACTIVITIES</code>, <code>SEQUENCE_WEIGHT</code>, <code>CHOICE_WEIGHT</code>, <code>PARALLEL_WEIGHT</code>, <code>LOOP_WEIGHT</code>, <code>OR_WEIGHT</code>, <code>SILENT_TRANSITION_PROB</code>, <code>DUPLICATE_ACTIVITY_PROB</code></td>
-          </tr>
-          <tr>
-            <td>Resources &amp; attributes</td>
-            <td><code>NUM_RESOURCES</code>, <code>NUM_ROLES</code>, <code>NUM_CASE_TYPES</code>, <code>REGIONS</code></td>
-          </tr>
-          <tr>
-            <td>Timing</td>
-            <td><code>INTER_ARRIVAL_MEAN_MIN</code>, <code>SERVICE_TIME_MEAN_MIN</code>, <code>SERVICE_TIME_STD_MIN</code></td>
-          </tr>
-          <tr>
-            <td>Noise</td>
-            <td><code>NOISE_PROBABILITY</code>, <code>NOISE_SIMILAR_VS_RANDOM</code></td>
           </tr>
         </tbody>
       </table>
@@ -922,14 +1013,60 @@ uv sync</code></pre>
     <!-- Examples -->
     <section class="page" id="examples">
       <h1>Examples</h1>
-      <p class="subtitle">Copy-and-edit <code>DRIFTS</code> blocks.</p>
+      <p class="subtitle">Copy-and-edit API calls, editable scripts, and <code>DRIFTS</code> blocks.</p>
 
-      <h3>Single perspective</h3>
+      <h3>Basic API</h3>
+      <pre><code>import rheon
+
+drifts = [{"perspective": "resource", "subtype": "pool_size", "drift_type": "sudden"}]
+
+generated = rheon.generate_log(
+    drifts,
+    "data/resource/resource_001.xes",
+    num_traces=100,
+    global_seed=7,
+)</code></pre>
+
+      <h2>Editable scripts</h2>
+
+      <div class="card-grid">
+        <div class="card">
+          <h3><code>generate_control_flow_log.py</code></h3>
+          <p>Changes the process tree. Use for activity, variant, and ordering drift.</p>
+        </div>
+        <div class="card">
+          <h3><code>generate_resource_log.py</code></h3>
+          <p>Changes resource assignment, workload, handover, pool size, or service speed.</p>
+        </div>
+        <div class="card">
+          <h3><code>generate_inter_case_log.py</code></h3>
+          <p>Changes case arrival behavior, burstiness, case mix, or emergent concurrency.</p>
+        </div>
+        <div class="card">
+          <h3><code>generate_data_log.py</code></h3>
+          <p>Changes case-level numeric and categorical attributes.</p>
+        </div>
+        <div class="card">
+          <h3><code>generate_multi_perspective_log.py</code></h3>
+          <p>Combines perspectives. Add a <code>perspective</code> key to each drift entry.</p>
+        </div>
+        <div class="card">
+          <h3><code>validate_log.py</code></h3>
+          <p>Validates a generated XES file and prints its drift metadata summary.</p>
+        </div>
+      </div>
+
+      <div class="note">
+        Each script now calls <code>rheon.generate_log()</code> directly inside its loop, so you can edit the same pattern
+        for your own scenarios.
+      </div>
+
+      <h3>Explicit drift blocks</h3>
       <pre><code>DRIFTS = [
-    {"subtype": "tree_mutation", "drift_type": "sudden", "change_proportion": 0.2},
-    {"subtype": "reassignment", "drift_type": "gradual_linear", "activities": ["a", "c"]},
-    {"subtype": "workload_distribution", "drift_type": "sudden", "resources": ["res_001", "res_003"]},
-    {"subtype": "service_time", "drift_type": "incremental", "resources": "all", "num_versions": 4},
+    {"perspective": "control_flow", "subtype": "tree_mutation", "drift_type": "sudden", "change_proportion": 0.2},
+    {"perspective": "resource", "subtype": "reassignment", "drift_type": "gradual_linear", "activities": ["a", "c"]},
+    {"perspective": "resource", "subtype": "workload_distribution", "drift_type": "sudden", "resources": ["res_001", "res_003"]},
+    {"perspective": "resource", "subtype": "service_time", "drift_type": "incremental", "resources": "all", "num_versions": 4},
 ]</code></pre>
 
       <h3>Multi perspective</h3>
@@ -1005,17 +1142,17 @@ uv sync</code></pre>
 
   // Theme toggle (persisted)
   const themeBtn = document.getElementById('themeToggle');
-  const savedTheme = localStorage.getItem('driftify-theme');
+  const savedTheme = localStorage.getItem('rheon-theme');
   if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
 
   themeBtn.addEventListener('click', () => {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     if (isDark) {
       document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem('driftify-theme', 'light');
+      localStorage.setItem('rheon-theme', 'light');
     } else {
       document.documentElement.setAttribute('data-theme', 'dark');
-      localStorage.setItem('driftify-theme', 'dark');
+      localStorage.setItem('rheon-theme', 'dark');
     }
   });
 </script>

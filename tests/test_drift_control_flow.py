@@ -20,12 +20,11 @@ def test_gradual_overlap_math_is_linear_and_exponential(small_config, rng):
 def test_control_flow_drift_builds_versions_and_gold_standard(small_config, rng):
     start, end = sample_horizon(small_config, rng)
     plans = sample_drift_plans(
-        [{"subtype": "tree_mutation", "drift_type": "sudden", "change_point": 0.5}],
+        [{"perspective": "control_flow", "subtype": "tree_mutation", "drift_type": "sudden", "change_point": 0.5}],
         config=small_config,
         horizon_start=start,
         horizon_end=end,
         rng=rng,
-        default_perspective="control_flow",
     )
     model = build_control_flow_model(small_config, plans, rng)
 
@@ -49,12 +48,11 @@ def test_control_flow_drift_builds_versions_and_gold_standard(small_config, rng)
 def test_control_flow_supports_all_drift_types(small_config, rng, drift_type, min_versions):
     start, end = sample_horizon(small_config, rng)
     plans = sample_drift_plans(
-        [{"subtype": "tree_mutation", "drift_type": drift_type, "change_point": 0.5}],
+        [{"perspective": "control_flow", "subtype": "tree_mutation", "drift_type": drift_type, "change_point": 0.5}],
         config=small_config,
         horizon_start=start,
         horizon_end=end,
         rng=rng,
-        default_perspective="control_flow",
     )
     model = build_control_flow_model(small_config, plans, rng)
 
