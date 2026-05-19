@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rheon documentation</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --sidebar-bg: #ffffff;
+      --topbar-bg: #1f2126;
+      --topbar-fg: #f3f4f6;
+      --topbar-muted: #b8bcc4;
+      --ink: #1e1f22;
+      --muted: #5e6470;
+      --line: #e5e6ea;
+      --soft: #f5f6f7;
+      --accent: #3574f0;
+      --accent-soft: #eaf1fe;
+      --code-bg: #f5f6f7;
+      --card-hover: #fafafb;
+    }
+
+    [data-theme="dark"] {
+      --bg: #1e1f22;
+      --sidebar-bg: #1e1f22;
+      --topbar-bg: #14151a;
+      --topbar-fg: #e9eaee;
+      --topbar-muted: #9a9fab;
+      --ink: #e9eaee;
+      --muted: #9a9fab;
+      --line: #2f3137;
+      --soft: #26272c;
+      --accent: #3574f0;
+      --accent-soft: #1f2c4a;
+      --code-bg: #26272c;
+      --card-hover: #26272c;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    /* ---------- Top bar ---------- */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      height: 56px;
+      background: var(--topbar-bg);
+      color: var(--topbar-fg);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      border-bottom: 1px solid #000;
+    }
+
+    .topbar-title {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--topbar-fg);
+    }
+
+    .topbar-spacer { flex: 1; }
+
+    .topbar-controls {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--topbar-muted);
+      font-size: 0.9rem;
+    }
+
+    .topbar-controls button {
+      background: transparent;
+      border: 0;
+      color: var(--topbar-muted);
+      cursor: pointer;
+      padding: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+
+    .topbar-controls button:hover {
+      color: var(--topbar-fg);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .topbar-controls .icon { width: 18px; height: 18px; }
+
+    /* ---------- Layout ---------- */
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ---------- Sidebar ---------- */
+    .sidebar {
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--line);
+      padding: 18px 12px 40px;
+      overflow-y: auto;
+      position: sticky;
+      top: 56px;
+      height: calc(100vh - 56px);
+    }
+
+    .nav-item {
+      display: block;
+      padding: 8px 16px;
+      position: relative;
+      border-radius: 6px;
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 0.9rem;
+      cursor: pointer;
+      user-select: none;
+      line-height: 1.4;
+    }
+
+    .nav-item:hover { background: var(--soft); }
+
+    .nav-item.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .nav-group > .nav-item::before {
+      content: "▸";
+      position: absolute;
+      left: 6px;
+      top: 50%;
+      font-size: 0.7rem;
+      color: var(--muted);
+      transform: translateY(-50%);
+      transition: transform 0.15s ease;
+    }
+
+    .nav-group.open > .nav-item::before {
+      transform: translateY(-50%) rotate(90deg);
+    }
+
+    .nav-group.open > .nav-item.active::before,
+    .nav-group > .nav-item.active::before {
+      color: #fff;
+    }
+
+    .nav-children {
+      display: none;
+      padding-left: 14px;
+    }
+
+    .nav-group.open .nav-children { display: block; }
+
+    /* ---------- Main content ---------- */
+    main {
+      padding: 56px 64px 96px;
+      max-width: 1040px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    h1, h2, h3 {
+      color: var(--ink);
+      line-height: 1.2;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      margin-top: 48px;
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin-top: 28px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      color: var(--muted);
+      margin: 0 0 32px;
+      font-weight: 400;
+    }
+
+    p {
+      margin: 12px 0 0;
+      color: var(--ink);
+      max-width: 780px;
+    }
+
+    p.muted { color: var(--muted); }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+
+    code, pre {
+      font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.88em;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 0.12em 0.4em;
+      border-radius: 4px;
+      color: var(--ink);
+    }
+
+    pre {
+      overflow: auto;
+      margin: 16px 0 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--code-bg);
+      line-height: 1.55;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      font-size: 0.92rem;
+    }
+
+    th {
+      background: var(--soft);
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    ul {
+      padding-left: 1.2rem;
+      margin: 12px 0 0;
+    }
+
+    li { margin: 4px 0; }
+
+    /* ---------- Cards ---------- */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .card {
+      display: block;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 24px;
+      text-decoration: none;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease;
+    }
+
+    .card:hover {
+      background: var(--card-hover);
+      border-color: #c8cad0;
+    }
+
+    [data-theme="dark"] .card:hover { border-color: #444751; }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      color: var(--accent);
+    }
+
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    /* ---------- Note callout ---------- */
+    .note {
+      border-left: 3px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 12px 16px;
+      margin-top: 20px;
+      color: var(--ink);
+      border-radius: 0 6px 6px 0;
+      font-size: 0.92rem;
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 880px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      main { padding: 32px 20px 64px; }
+      h1 { font-size: 1.9rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <span class="topbar-title">Rheon documentation</span>
+  <span class="topbar-spacer"></span>
+  <div class="topbar-controls">
+    <button id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </svg>
+    </button>
+    <button aria-label="Search" title="Search">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="M21 21l-4.3-4.3"></path>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a class="nav-item active" data-target="welcome">Welcome</a>
+    <a class="nav-item" data-target="quick-start">Quick start</a>
+    <a class="nav-item" data-target="installation">Installation</a>
+    <a class="nav-item" data-target="scripts">Generator scripts</a>
+    <a class="nav-item" data-target="drift-types">Drift types</a>
+    <div class="nav-group" id="group-perspectives">
+      <a class="nav-item" data-target="perspectives">Drift perspectives</a>
+      <div class="nav-children">
+        <a class="nav-item" data-target="perspective-control-flow">Control flow</a>
+        <a class="nav-item" data-target="perspective-resource">Resource</a>
+        <a class="nav-item" data-target="perspective-inter-case">Inter case</a>
+        <a class="nav-item" data-target="perspective-data">Data</a>
+      </div>
+    </div>
+    <a class="nav-item" data-target="parameters">Parameters</a>
+    <a class="nav-item" data-target="config">Configuration</a>
+    <a class="nav-item" data-target="output">Output</a>
+    <a class="nav-item" data-target="examples">Examples</a>
+  </aside>
+
+  <!-- Main content -->
+  <main>
+
+    <!-- Welcome -->
+    <section class="page active" id="welcome">
+      <h1>Rheon</h1>
+      <p class="subtitle">Synthetic XES event-log generation with known concept drift.</p>
+
+      <div class="card-grid">
+        <a class="card" data-target="quick-start">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+              <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22 22 0 0 1-4 2z"/>
+              <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+              <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+            </svg>
+          </div>
+          <h3>Quick start</h3>
+          <p>Run a generator script and produce your first labeled XES log in under a minute.</p>
+        </a>
+
+        <a class="card" data-target="installation">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12l10-9 10 9-10 9z"/>
+              <path d="M2 12l10 9 10-9"/>
+            </svg>
+          </div>
+          <h3>Installation</h3>
+          <p>Set up the project, dependencies, and the <code>uv</code> runtime.</p>
+        </a>
+      </div>
+
+      <h2>Concepts</h2>
+
+      <div class="card-grid">
+        <a class="card" data-target="drift-types">
+          <h3>Drift types</h3>
+          <p>Sudden, gradual, incremental, and recurring change shapes.</p>
+        </a>
+        <a class="card" data-target="perspectives">
+          <h3>Drift perspectives</h3>
+          <p>Where the change occurs: control flow, resources, arrivals, or data.</p>
+        </a>
+        <a class="card" data-target="parameters">
+          <h3>Parameters</h3>
+          <p>Every key in a <code>DRIFTS</code> entry, and when to use it.</p>
+        </a>
+        <a class="card" data-target="output">
+          <h3>Output</h3>
+          <p>XES files, metadata sidecars, and the columns Driftify writes.</p>
+        </a>
+      </div>
+    </section>
+
+    <!-- Quick start -->
+    <section class="page" id="quick-start">
+      <h1>Quick start</h1>
+      <p class="subtitle">Generate a labeled log from a generator script.</p>
+
+      <p>Edit the constants at the top of a generator script, then run it from the repository root.</p>
+      <pre><code>uv run python scripts/generate_resource_log.py
+uv run python scripts/validate_log.py data/resource/resource_001.xes</code></pre>
+
+      <p>Each generated log includes machine-readable drift metadata as XES log attributes and a sidecar
+        summary next to the <code>.xes</code> file.</p>
+
+      <div class="note">
+        The API is driven entirely by the scripts in <code>scripts/</code> for now. Edit a script,
+        run it, inspect the output.
+      </div>
+    </section>
+
+    <!-- Installation -->
+    <section class="page" id="installation">
+      <h1>Installation</h1>
+      <p class="subtitle">Get the runtime and dependencies in place.</p>
+
+      <h3>Prerequisites</h3>
+      <ul>
+        <li>Python 3.10 or newer</li>
+        <li><a href="https://docs.astral.sh/uv/" target="_blank" rel="noopener">uv</a> package manager</li>
+      </ul>
+
+      <h3>Set up</h3>
+      <p>Clone the repository and let <code>uv</code> resolve dependencies on first run:</p>
+      <pre><code>git clone &lt;repo-url&gt; rheon
+cd rheon
+uv sync</code></pre>
+
+      <h3>Verify</h3>
+      <p>Run a quick sanity check by generating a tiny log:</p>
+      <pre><code>uv run python scripts/generate_control_flow_log.py</code></pre>
+    </section>
+
+    <!-- Generator scripts -->
+    <section class="page" id="scripts">
+      <h1>Generator scripts</h1>
+      <p class="subtitle">Each script targets one perspective of drift.</p>
+
+      <div class="card-grid">
+        <div class="card">
+          <h3><code>generate_control_flow_log.py</code></h3>
+          <p>Changes the process tree. Use for activity, variant, and ordering drift.</p>
+        </div>
+        <div class="card">
+          <h3><code>generate_resource_log.py</code></h3>
+          <p>Changes resource assignment, workload, handover, pool size, or service speed.</p>
+        </div>
+        <div class="card">
+          <h3><code>generate_inter_case_log.py</code></h3>
+          <p>Changes case arrival behavior, burstiness, case mix, or emergent concurrency.</p>
+        </div>
+        <div class="card">
+          <h3><code>generate_data_log.py</code></h3>
+          <p>Changes case-level numeric and categorical attributes.</p>
+        </div>
+        <div class="card">
+          <h3><code>generate_multi_perspective_log.py</code></h3>
+          <p>Combines perspectives. Add a <code>perspective</code> key to each drift entry.</p>
+        </div>
+        <div class="card">
+          <h3><code>validate_log.py</code></h3>
+          <p>Validates a generated XES file and prints its drift metadata summary.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Drift types -->
+    <section class="page" id="drift-types">
+      <h1>Drift types</h1>
+      <p class="subtitle">How the change is shaped over time.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Behavior</th>
+            <th>Optional parameters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>sudden</code></td>
+            <td>Hard switch at <code>change_point</code>.</td>
+            <td>None.</td>
+          </tr>
+          <tr>
+            <td><code>gradual_linear</code> / <code>gradual</code></td>
+            <td>Old and new behavior overlap. Probability of new behavior rises linearly.</td>
+            <td>Transition width uses <code>GeneratorConfig.gradual_overlap_fraction</code>, default <code>0.10</code>.</td>
+          </tr>
+          <tr>
+            <td><code>gradual_exponential</code></td>
+            <td>Overlapping behaviors. New behavior starts slowly and rises faster near the end.</td>
+            <td>Transition width uses <code>GeneratorConfig.gradual_overlap_fraction</code>, default <code>0.10</code>.</td>
+          </tr>
+          <tr>
+            <td><code>incremental</code></td>
+            <td>Creates intermediate versions and moves through them across the transition window.</td>
+            <td><code>num_versions</code>: integer, clamped to 3–5. Default: random 3–5.</td>
+          </tr>
+          <tr>
+            <td><code>recurring</code></td>
+            <td>Alternates between old and new behavior for a period, then settles on the new behavior.</td>
+            <td><code>period_days</code>: length of one phase. Default uses <code>GeneratorConfig.recurring_period_fraction</code>, <code>0.20</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Drift perspectives -->
+    <section class="page" id="perspectives">
+      <h1>Drift perspectives</h1>
+      <p class="subtitle">What part of the process changes.</p>
+
+      <p>A drift perspective describes the process dimension affected by a drift. Combine it with a
+        <code>drift_type</code> to choose the time shape, then choose a subtype to define the concrete
+        mechanism.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Perspective</th>
+            <th>What changes</th>
+            <th>Subtypes</th>
+            <th>Generated evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>control_flow</code></td>
+            <td>Activities, ordering, branching, loops, and concurrency in the process tree.</td>
+            <td><code>tree_mutation</code></td>
+            <td>Changed variants, activity structure, and process-tree metadata.</td>
+          </tr>
+          <tr>
+            <td><code>resource</code></td>
+            <td>Who performs work, how work is distributed, service speed, pool size, and handovers.</td>
+            <td><code>reassignment</code>, <code>workload_distribution</code>, <code>service_time</code>, <code>pool_size</code>, <code>handover</code></td>
+            <td><code>org:resource</code>, <code>org:role</code>, event durations, and resource drift metadata.</td>
+          </tr>
+          <tr>
+            <td><code>inter_case</code></td>
+            <td>How cases enter the log, how arrivals cluster, case mix, and case overlap.</td>
+            <td><code>arrival_rate</code>, <code>burstiness</code>, <code>case_mix</code>, <code>concurrency</code></td>
+            <td>Case start timestamps, <code>case:case_type</code>, and concurrency-sensitive timing patterns.</td>
+          </tr>
+          <tr>
+            <td><code>data</code></td>
+            <td>Case-level attributes independent of the route through the process.</td>
+            <td><code>numeric</code>, <code>categorical</code></td>
+            <td><code>case:amount</code>, <code>case:region</code>, and attribute distribution metadata.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Subtypes: Control flow -->
+    <section class="page" id="perspective-control-flow">
+      <h1>Control flow</h1>
+      <p class="subtitle">Drift subtypes that mutate the process tree.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Subtype</th>
+            <th>Effect</th>
+            <th>Optional parameters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>tree_mutation</code></td>
+            <td>Mutates the process tree by adding, deleting, or moving activities and swapping operators.</td>
+            <td>
+              <code>change_proportion</code>: float 0.0–1.0, default <code>0.25</code>.<br>
+              <code>intensity</code>: alias used when <code>change_proportion</code> is absent.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Subtypes: Resource -->
+    <section class="page" id="perspective-resource">
+      <h1>Resource</h1>
+      <p class="subtitle">Drift subtypes that change resource behavior.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Subtype</th>
+            <th>Effect</th>
+            <th>Optional parameters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>reassignment</code></td>
+            <td>Changes the dominant resource for selected activities while keeping the 80/20 dominance shape.</td>
+            <td><code>activities</code>: list of activity labels or <code>"all"</code>. Default: <code>"all"</code>.</td>
+          </tr>
+          <tr>
+            <td><code>workload_distribution</code></td>
+            <td>Changes event counts per resource by skewing activity-resource assignment probabilities.</td>
+            <td><code>resources</code>: list of active resources or <code>"all"</code>. Listed resources receive 70% of event assignment probability.</td>
+          </tr>
+          <tr>
+            <td><code>service_time</code></td>
+            <td>Changes processing speed for selected resources. Multipliers above 1.0 are slower, below 1.0 faster.</td>
+            <td><code>resources</code>: list of resources or <code>"all"</code>.</td>
+          </tr>
+          <tr>
+            <td><code>pool_size</code></td>
+            <td>Shrinks or expands the active resource pool. Inactive resources are not assigned work.</td>
+            <td>None.</td>
+          </tr>
+          <tr>
+            <td><code>handover</code></td>
+            <td>Rewires one source resource to a different dominant next-resource target.</td>
+            <td>None.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Subtypes: Inter case -->
+    <section class="page" id="perspective-inter-case">
+      <h1>Inter case</h1>
+      <p class="subtitle">Drift subtypes that change how cases enter and overlap.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Subtype</th>
+            <th>Effect</th>
+            <th>Optional parameters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>arrival_rate</code></td>
+            <td>Changes mean inter-arrival time. Cases arrive faster or slower.</td>
+            <td>None.</td>
+          </tr>
+          <tr>
+            <td><code>burstiness</code></td>
+            <td>Switches arrival shape between exponential and bursty bimodal-Pareto behavior.</td>
+            <td>None.</td>
+          </tr>
+          <tr>
+            <td><code>case_mix</code></td>
+            <td>Changes the distribution of <code>case:case_type</code>.</td>
+            <td>None.</td>
+          </tr>
+          <tr>
+            <td><code>concurrency</code></td>
+            <td>Records a concurrency drift marker. Concurrency is emergent from arrivals and event durations.</td>
+            <td>None.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Subtypes: Data -->
+    <section class="page" id="perspective-data">
+      <h1>Data</h1>
+      <p class="subtitle">Drift subtypes that change case-level attributes.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Subtype</th>
+            <th>Effect</th>
+            <th>Optional parameters</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>numeric</code></td>
+            <td>Changes the mean and standard deviation of <code>case:amount</code>.</td>
+            <td>None.</td>
+          </tr>
+          <tr>
+            <td><code>categorical</code></td>
+            <td>Changes the distribution of <code>case:region</code>.</td>
+            <td>None.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Parameters -->
+    <section class="page" id="parameters">
+      <h1>Parameters</h1>
+      <p class="subtitle">Every key accepted in a <code>DRIFTS</code> entry.</p>
+
+      <p>Each entry in <code>DRIFTS</code> is a Python dictionary.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Required</th>
+            <th>Applies to</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>subtype</code></td>
+            <td>Yes</td>
+            <td>All drifts</td>
+            <td>One of the subtype names listed in the subtype pages.</td>
+          </tr>
+          <tr>
+            <td><code>drift_type</code></td>
+            <td>No</td>
+            <td>All drifts</td>
+            <td><code>sudden</code>, <code>gradual_linear</code>, <code>gradual_exponential</code>, <code>incremental</code>, or <code>recurring</code>. Default: <code>sudden</code>.</td>
+          </tr>
+          <tr>
+            <td><code>change_point</code></td>
+            <td>No</td>
+            <td>All drifts</td>
+            <td>Fraction of the generated horizon, clamped to 0.05–0.95. <code>0.5</code> is the midpoint. If omitted, Driftify places drifts within their perspective-specific slots.</td>
+          </tr>
+          <tr>
+            <td><code>perspective</code></td>
+            <td>Only multi-perspective</td>
+            <td>Multi-perspective logs</td>
+            <td><code>control_flow</code>, <code>resource</code>, <code>inter_case</code>, or <code>data</code>. Single-perspective scripts provide a default.</td>
+          </tr>
+          <tr>
+            <td><code>num_versions</code></td>
+            <td>No</td>
+            <td><code>drift_type="incremental"</code></td>
+            <td>Number of versions, clamped to 3–5. Default: random 3–5.</td>
+          </tr>
+          <tr>
+            <td><code>period_days</code></td>
+            <td>No</td>
+            <td><code>drift_type="recurring"</code></td>
+            <td>Length of one recurrence phase. If omitted, derived from <code>GeneratorConfig.recurring_period_fraction</code>.</td>
+          </tr>
+          <tr>
+            <td><code>change_proportion</code></td>
+            <td>No</td>
+            <td><code>tree_mutation</code></td>
+            <td>Mutation intensity. Useful values: <code>0.05</code> subtle, <code>0.20</code> medium, <code>0.50</code> strong. Default: <code>0.25</code>.</td>
+          </tr>
+          <tr>
+            <td><code>intensity</code></td>
+            <td>No</td>
+            <td><code>tree_mutation</code></td>
+            <td>Alias for mutation intensity, used only when <code>change_proportion</code> is absent.</td>
+          </tr>
+          <tr>
+            <td><code>activities</code></td>
+            <td>No</td>
+            <td>Resource <code>reassignment</code></td>
+            <td>List of activity labels or <code>"all"</code>. Default: <code>"all"</code>.</td>
+          </tr>
+          <tr>
+            <td><code>resources</code></td>
+            <td>No</td>
+            <td><code>workload_distribution</code>, <code>service_time</code></td>
+            <td>List of resource ids such as <code>["res_001"]</code>, or <code>"all"</code>. Default: <code>"all"</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Configuration -->
+    <section class="page" id="config">
+      <h1>Configuration</h1>
+      <p class="subtitle">Constants edited at the top of generator scripts.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Group</th>
+            <th>Constants</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Output</td>
+            <td><code>OUTPUT_PATH</code>, <code>NUM_LOGS</code>, <code>GLOBAL_SEED</code></td>
+          </tr>
+          <tr>
+            <td>Trace size</td>
+            <td><code>NUM_TRACES</code>, <code>MIN_TRACE_LENGTH</code>, <code>MAX_TRACE_LENGTH</code>, <code>AVG_TRACE_LENGTH</code>, <code>TRACE_LENGTH_VARIANCE</code></td>
+          </tr>
+          <tr>
+            <td>Time horizon</td>
+            <td><code>HORIZON_MIN_DAYS</code>, <code>HORIZON_MAX_DAYS</code></td>
+          </tr>
+          <tr>
+            <td>Process tree</td>
+            <td><code>MIN_ACTIVITIES</code>, <code>MAX_ACTIVITIES</code>, <code>SEQUENCE_WEIGHT</code>, <code>CHOICE_WEIGHT</code>, <code>PARALLEL_WEIGHT</code>, <code>LOOP_WEIGHT</code>, <code>OR_WEIGHT</code>, <code>SILENT_TRANSITION_PROB</code>, <code>DUPLICATE_ACTIVITY_PROB</code></td>
+          </tr>
+          <tr>
+            <td>Resources &amp; attributes</td>
+            <td><code>NUM_RESOURCES</code>, <code>NUM_ROLES</code>, <code>NUM_CASE_TYPES</code>, <code>REGIONS</code></td>
+          </tr>
+          <tr>
+            <td>Timing</td>
+            <td><code>INTER_ARRIVAL_MEAN_MIN</code>, <code>SERVICE_TIME_MEAN_MIN</code>, <code>SERVICE_TIME_STD_MIN</code></td>
+          </tr>
+          <tr>
+            <td>Noise</td>
+            <td><code>NOISE_PROBABILITY</code>, <code>NOISE_SIMILAR_VS_RANDOM</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Output -->
+    <section class="page" id="output">
+      <h1>Output</h1>
+      <p class="subtitle">XES log and a metadata sidecar.</p>
+
+      <pre><code>&lt;output_folder&gt;/&lt;log_name&gt;.xes
+&lt;output_folder&gt;/&lt;log_name&gt;.xes.metadata.md</code></pre>
+
+      <h3>Log columns</h3>
+      <p>
+        <code>event:id</code>,
+        <code>case:concept:name</code>,
+        <code>concept:name</code>,
+        <code>start_timestamp</code>,
+        <code>time:timestamp</code>,
+        <code>event:duration_min</code>,
+        <code>org:resource</code>,
+        <code>org:role</code>,
+        <code>case:case_type</code>,
+        <code>case:amount</code>,
+        <code>case:region</code>
+      </p>
+
+      <h3>Metadata</h3>
+      <p>Each drift metadata record contains:</p>
+      <p>
+        <code>drift_id</code>,
+        <code>perspective</code>,
+        <code>subtype</code>,
+        <code>drift_type</code>,
+        <code>change_point_timestamp</code>,
+        <code>overlap_window_start</code>,
+        <code>overlap_window_end</code>,
+        <code>affected_columns</code>,
+        <code>change_details</code>
+      </p>
+
+      <div class="note">
+        The XES file stores JSON strings in log attributes:
+        <code>drift_info</code>, <code>config_info</code>, and <code>noise_info</code>.
+      </div>
+    </section>
+
+    <!-- Examples -->
+    <section class="page" id="examples">
+      <h1>Examples</h1>
+      <p class="subtitle">Copy-and-edit <code>DRIFTS</code> blocks.</p>
+
+      <h3>Single perspective</h3>
+      <pre><code>DRIFTS = [
+    {"subtype": "tree_mutation", "drift_type": "sudden", "change_proportion": 0.2},
+    {"subtype": "reassignment", "drift_type": "gradual_linear", "activities": ["a", "c"]},
+    {"subtype": "workload_distribution", "drift_type": "sudden", "resources": ["res_001", "res_003"]},
+    {"subtype": "service_time", "drift_type": "incremental", "resources": "all", "num_versions": 4},
+]</code></pre>
+
+      <h3>Multi perspective</h3>
+      <pre><code>DRIFTS = [
+    {"perspective": "control_flow", "subtype": "tree_mutation", "drift_type": "sudden"},
+    {"perspective": "resource", "subtype": "workload_distribution", "drift_type": "sudden"},
+    {"perspective": "inter_case", "subtype": "arrival_rate", "drift_type": "gradual_exponential"},
+    {"perspective": "data", "subtype": "numeric", "drift_type": "incremental", "num_versions": 4},
+]</code></pre>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // Navigation
+  const navItems = document.querySelectorAll('.nav-item[data-target]');
+  const pages = document.querySelectorAll('.page');
+  const cards = document.querySelectorAll('.card[data-target]');
+  const perspectiveIds = ['perspectives', 'perspective-control-flow', 'perspective-resource', 'perspective-inter-case', 'perspective-data'];
+  const perspectivesGroup = document.getElementById('group-perspectives');
+
+  function showPage(targetId, options = {}) {
+    if (!targetId) return;
+    let found = false;
+    pages.forEach(p => {
+      const active = p.id === targetId;
+      p.classList.toggle('active', active);
+      if (active) found = true;
+    });
+    if (!found) return;
+
+    // Sidebar active state: last matching nav-item with this target
+    navItems.forEach(n => n.classList.remove('active'));
+    const matches = document.querySelectorAll(`.nav-item[data-target="${targetId}"]`);
+    if (matches.length) matches[matches.length - 1].classList.add('active');
+    if (!options.preserveGroupState && perspectiveIds.includes(targetId)) {
+      perspectivesGroup.classList.add('open');
+    }
+
+    // Update URL hash without scrolling
+    if (history.replaceState) {
+      history.replaceState(null, '', '#' + targetId);
+    }
+
+    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  }
+
+  navItems.forEach(item => {
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      const target = item.getAttribute('data-target');
+      const parentGroup = item.parentElement;
+      const isGroupParent = parentGroup && parentGroup.classList.contains('nav-group') && item === parentGroup.firstElementChild;
+      if (isGroupParent) {
+        parentGroup.classList.toggle('open');
+      }
+
+      showPage(target, { preserveGroupState: isGroupParent });
+    });
+  });
+
+  cards.forEach(card => {
+    card.addEventListener('click', e => {
+      e.preventDefault();
+      showPage(card.getAttribute('data-target'));
+    });
+  });
+
+  // Initial route from hash
+  const initial = location.hash ? location.hash.slice(1) : 'welcome';
+  showPage(initial);
+
+  // Theme toggle (persisted)
+  const themeBtn = document.getElementById('themeToggle');
+  const savedTheme = localStorage.getItem('driftify-theme');
+  if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+
+  themeBtn.addEventListener('click', () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('driftify-theme', 'light');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('driftify-theme', 'dark');
+    }
+  });
+</script>
+
+</body>
+</html>

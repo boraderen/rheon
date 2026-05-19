@@ -24,3 +24,9 @@ htmlcov/
 # Editor
 .vscode/
 .idea/
+
+# Agents
+CLAUDE.md
+AGENTS.md
+
+/pm4py
