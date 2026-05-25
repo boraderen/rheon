@@ -64,10 +64,25 @@
       border-bottom: 1px solid #000;
     }
 
+    .topbar-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .topbar-logo {
+      width: 58px;
+      height: 20px;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+
     .topbar-title {
       font-size: 0.95rem;
       font-weight: 500;
       color: var(--topbar-fg);
+      white-space: nowrap;
     }
 
     .topbar-spacer { flex: 1; }
@@ -350,7 +365,10 @@
 
 <!-- Top bar -->
 <div class="topbar">
-  <span class="topbar-title">Rheon documentation</span>
+  <div class="topbar-brand">
+    <img class="topbar-logo" src="rheon.png" alt="" aria-hidden="true">
+    <span class="topbar-title">Rheon documentation</span>
+  </div>
   <span class="topbar-spacer"></span>
   <div class="topbar-controls">
     <button id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
