@@ -10,6 +10,9 @@ __pycache__/
 build/
 dist/
 
+# Generated logs
+/data/
+
 # Testing
 .pytest_cache/
 .coverage

@@ -1,69 +1,136 @@
 # Rheon
 
-Synthetic multi-perspective concept drift log generation for process mining experiments.
+Rheon generates synthetic **XES event logs with known concept drift** for process-mining
+experiments. You describe a base process and a list of drifts; Rheon produces the log plus a
+metadata file that records exactly where each drift is and what it changed — the ground truth you
+can evaluate a drift-detection pipeline against.
 
-Rheon generates XES event logs with known drifts across control-flow, resource, inter-case, and data perspectives.
+## Install
 
-Rheon is not published on PyPI yet. Install it from a local clone.
+```bash
+pip install rheon
+```
 
-## Local Setup
+## Quickstart
+
+```python
+import rheon
+
+drifts = [
+    {"type": "control_flow", "mode": "sudden", "drift_point": 0.5, "num_activities": 9},
+    {"type": "reassignment", "mode": "gradual", "start_point": 0.3, "end_point": 0.45},
+    {"type": "amount", "mode": "sudden", "drift_point": 0.6, "mean": 4000},
+]
+
+# Writes the log and a metadata sidecar; returns nothing.
+rheon.generate_log(drifts, "out/example.xes", num_traces=2000, num_activities=8)
+
+# Pass format="csv" to save the log as CSV instead of XES.
+rheon.generate_log(drifts, "out/example.csv", format="csv", num_traces=2000, num_activities=8)
+```
+
+`generate_log` does not return anything — it saves the files. To work with the log, read it back:
+
+```python
+import pm4py
+log = pm4py.read_xes("out/example.xes")     # XES → DataFrame
+
+import pandas as pd
+df = pd.read_csv("out/example.csv")          # CSV → DataFrame
+```
+
+## Drift types
+
+Every drift is one dict with a `type`, a `mode` (`"sudden"` or `"gradual"`), and a position:
+`drift_point` for sudden drifts, or `start_point`/`end_point` for gradual ones. All positions are
+fractions of the time horizon in `(0, 1)`. The remaining keys are type-specific.
+
+| Perspective | Type | What changes | Type-specific params |
+| --- | --- | --- | --- |
+| intra-case | `control_flow` | activity-ordering structure: cases after the drift are played out from a different process tree | `num_activities`, `tree_weights` |
+| resource | `pool_size` | resources are added or removed; durations scale the opposite way | `delta`, `duration_factor` |
+| resource | `reassignment` | a new dominant resource is chosen for every activity | — |
+| resource | `workload` | traces are duplicated (or dropped); per-resource case load shifts | `workload_factor` |
+| resource | `duration` | the processing time of the given resources is scaled | `resources`, `factor` |
+| inter-case | `waiting_time` | the mean waiting gap between events shifts | `mean`, `variance` |
+| inter-case | `amount` | case amounts are drawn from a shifted distribution | `mean`, `variance` |
+| inter-case | `arrival_rate` | the mean gap between case arrivals changes | `inter_arrival` or `factor` |
+| inter-case | `region` | a new dominant region is chosen for later cases | — |
+
+Rheon validates the drift list before generating and raises a clear `ValueError` for problems such
+as an out-of-range position, a gradual window with `start_point >= end_point`, or two drifts of the
+same type whose transition windows overlap.
+
+## Parameters
+
+`generate_log(drifts, output_path, *, log_name=None, format="xes", **params)` accepts these
+generation parameters (all optional, sensible defaults shown). `format` is `"xes"` or `"csv"` and
+also drives the output file's suffix.
+
+| Parameter | Default | Meaning |
+| --- | --- | --- |
+| `num_traces` | `1000` | number of cases (workload drift may change the final count) |
+| `num_activities` | `10` | activities in the base process tree |
+| `num_resources` | `8` | size of the resource pool |
+| `num_regions` | `4` | number of regions |
+| `tree_weights` | `{sequence:.6, choice:.25, parallel:.1, loop:.05}` | operator weights for the base tree |
+| `start_date` | `2020-01-01` | start of the time horizon |
+| `end_date` | `2020-12-31` | informational; the realised horizon end is reported in metadata |
+| `inter_arrival` | `60.0` | mean minutes between case arrivals |
+| `activity_duration` | `(30.0, 100.0)` | `(mean, variance)` of activity processing time in minutes |
+| `waiting_time` | `(15.0, 50.0)` | `(mean, variance)` of the waiting gap between events |
+| `amount` | `(1000.0, 40000.0)` | `(mean, variance)` of the case amount |
+| `seed` | `42` | random seed (same seed → identical log) |
+
+## Output files and metadata
+
+Each run writes two files next to `output_path`:
+
+- **`<name>.xes`** (or **`<name>.csv`**) — the event log. Events carry `concept:name`,
+  `start_timestamp`, `time:timestamp`, `event:duration_min` and `org:resource`; each case carries
+  `amount` and `region`. For XES the full metadata is also embedded as a log-level `rheon:metadata`
+  attribute.
+- **`<name>_meta.md`** — a short, readable ground-truth report with three sections:
+  1. **General parameters** — the structural, temporal and attribute parameters of the run.
+  2. **Base distributions** — the starting state: every activity's dominant resource and its duration
+     and waiting distributions `(mean, var)`, plus the case-level amount distribution, inter-arrival
+     mean and dominant region.
+  3. **Drifts** — each drift with its mode and drift point / window (as both a horizon fraction and an
+     absolute timestamp), followed by exactly which distributions or assignments it changed, per
+     activity / resource (e.g. a reassignment's before → after resource table, or an amount drift's
+     `mean: 1000 → 4000`).
+
+## Validation
+
+`validate_xes` re-reads a written log and checks it is well-formed, schema-correct, time-ordered and
+consistent with its embedded drift metadata:
+
+```python
+import rheon
+
+issues = rheon.validate_xes("out/example.xes")
+print(rheon.validation_passed(issues))   # True when there are no errors
+for issue in issues:
+    print(issue["severity"], issue["message"])
+```
+
+## Example
+
+A single ready-to-run script generates one mixed-drift log (as XES and CSV):
+
+```bash
+uv run python example/example.py
+```
+
+## Development
 
 ```bash
 git clone <repo-url> rheon
 cd rheon
 uv sync
+uv run pytest
 ```
 
-Run a generator:
+## License & status
 
-```bash
-uv run python scripts/generate_control_flow_log.py
-uv run python scripts/generate_resource_log.py
-uv run python scripts/generate_inter_case_log.py
-uv run python scripts/generate_data_log.py
-```
-
-## Use From Another Project
-
-With `uv`:
-
-```bash
-cd /path/to/other-project
-uv add --editable /path/to/rheon
-```
-
-Or add it manually:
-
-```toml
-[project]
-dependencies = ["rheon"]
-
-[tool.uv.sources]
-rheon = { path = "../rheon", editable = true }
-```
-
-Then import it:
-
-```python
-import rheon
-
-drifts = [{"perspective": "data", "subtype": "numeric", "drift_type": "sudden"}]
-
-generated = rheon.generate_log(
-    drifts,
-    "data/example/data_001.xes",
-    default_perspective="data",
-    num_traces=100,
-    global_seed=7,
-)
-```
-
-The generator scripts use the same function with uppercase constants such as
-`NUM_TRACES` and `GLOBAL_SEED`; direct imports can use lowercase keyword
-arguments.
-
-With `pip`:
-
-```bash
-python -m pip install -e /path/to/rheon
-```
+Rheon is research software for generating drift benchmarks. See the repository for license details.
