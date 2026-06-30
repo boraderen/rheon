@@ -576,7 +576,6 @@ tests/
     tree_weights={"sequence": 0.6, "choice": 0.25, "parallel": 0.1, "loop": 0.05},
     start_date=datetime(2020, 1, 1),
     end_date=datetime(2020, 12, 31),
-    inter_arrival=60.0,
     activity_duration=(30.0, 100.0),
     waiting_time=(15.0, 50.0),
     amount=(1000.0, 40000.0),
@@ -600,20 +599,25 @@ tests/
           <tr><td><code>output_path</code></td><td>—</td><td>Destination of the log; its suffix is set from <code>format</code>.</td></tr>
           <tr><td><code>log_name</code></td><td>file stem</td><td>Name used in metadata and the sidecar filename.</td></tr>
           <tr><td><code>format</code></td><td><code>"xes"</code></td><td><code>"xes"</code> or <code>"csv"</code>.</td></tr>
-          <tr><td><code>num_traces</code></td><td><code>1000</code></td><td>Number of cases (workload drift may change the final count).</td></tr>
+          <tr><td><code>num_traces</code></td><td><code>1000</code></td><td>Target number of cases (the <code>arrival_rate</code> and <code>workload</code> drifts can change the final count).</td></tr>
           <tr><td><code>num_activities</code></td><td><code>10</code></td><td>Activities in the base process tree.</td></tr>
           <tr><td><code>num_resources</code></td><td><code>8</code></td><td>Size of the resource pool.</td></tr>
           <tr><td><code>num_regions</code></td><td><code>4</code></td><td>Number of regions.</td></tr>
           <tr><td><code>tree_weights</code></td><td>see above</td><td>Operator weights for the base tree (<code>sequence</code>, <code>choice</code>, <code>parallel</code>, <code>loop</code>).</td></tr>
           <tr><td><code>start_date</code></td><td><code>2020-01-01</code></td><td>Start of the time horizon.</td></tr>
-          <tr><td><code>end_date</code></td><td><code>2020-12-31</code></td><td>Informational; the realised horizon end is reported in metadata.</td></tr>
-          <tr><td><code>inter_arrival</code></td><td><code>60.0</code></td><td>Mean minutes between case arrivals.</td></tr>
+          <tr><td><code>end_date</code></td><td><code>2020-12-31</code></td><td>End of the time horizon (with <code>start_date</code> it fixes the window).</td></tr>
           <tr><td><code>activity_duration</code></td><td><code>(30.0, 100.0)</code></td><td><code>(mean, variance)</code> of activity processing time in minutes.</td></tr>
           <tr><td><code>waiting_time</code></td><td><code>(15.0, 50.0)</code></td><td><code>(mean, variance)</code> of the waiting gap between events.</td></tr>
           <tr><td><code>amount</code></td><td><code>(1000.0, 40000.0)</code></td><td><code>(mean, variance)</code> of the case amount.</td></tr>
-          <tr><td><code>seed</code></td><td><code>42</code></td><td>Random seed; the same seed reproduces the same log.</td></tr>
+          <tr><td><code>seed</code></td><td><code>42</code></td><td>Random seed.</td></tr>
         </tbody>
       </table>
+
+      <p>Cases are spread across <code>[start_date, end_date]</code>. The mean inter-arrival gap is
+        <strong>derived</strong> as <code>(end_date − start_date) / num_traces</code> — there is no
+        <code>inter_arrival</code> parameter. The <code>arrival_rate</code> drift changes that derived
+        rate after its drift point, so the realised case count then drifts away from
+        <code>num_traces</code>.</p>
 
       <div class="note">
         <code>generate_log()</code> returns nothing — it writes the log file and a

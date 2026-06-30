@@ -206,20 +206,21 @@ def _generate_arrivals(
     arrival_drifts: list[Drift],
     rng: np.random.Generator,
 ) -> tuple[list[datetime], datetime]:
-    """Place `num_traces` case start times by stepping exponential inter-arrival gaps."""
-    starts: list[datetime] = []
-    cursor = config.start_date
-    count = max(1, config.num_traces)
-    for index in range(count):
-        if index == 0:
-            starts.append(cursor)
-            continue
-        position_value = index / max(1, count - 1)
-        mean = _effective_inter_arrival(config.inter_arrival, arrival_drifts, position_value)
+    """Fill the fixed [start_date, end_date] horizon with case starts; the count is approximate."""
+    start, end = config.start_date, config.end_date
+    horizon_seconds = max(1.0, (end - start).total_seconds())
+    base_mean = config.base_inter_arrival
+    max_cases = config.num_traces * 5 + 100  # safety cap if a drift makes arrivals very dense
+    starts = [start]
+    cursor = start
+    while len(starts) < max_cases:
+        position_value = (cursor - start).total_seconds() / horizon_seconds
+        mean = _effective_inter_arrival(base_mean, arrival_drifts, position_value)
         cursor = cursor + timedelta(minutes=float(rng.exponential(max(1e-6, mean))))
+        if cursor > end:
+            break
         starts.append(cursor)
-    horizon_end = max(starts[-1], config.start_date + timedelta(minutes=1))
-    return starts, horizon_end
+    return starts, end
 
 
 def _effective_inter_arrival(base: float, arrival_drifts: list[Drift], position_value: float) -> float:

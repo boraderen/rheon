@@ -84,7 +84,6 @@ class GeneratorConfig:
     start_date: datetime = DEFAULT_START_DATE
     end_date: datetime = DEFAULT_END_DATE
 
-    inter_arrival: float = 60.0          # mean minutes between case starts
     activity_duration: tuple[float, float] = (30.0, 100.0)  # (mean, variance) minutes
     waiting_time: tuple[float, float] = (15.0, 50.0)        # (mean, variance) minutes
     amount: tuple[float, float] = (1000.0, 40000.0)         # (mean, variance)
@@ -106,6 +105,12 @@ class GeneratorConfig:
         """The region pool region_1, region_2, ..."""
         return [region_label(idx) for idx in range(1, self.num_regions + 1)]
 
+    @property
+    def base_inter_arrival(self) -> float:
+        """Mean minutes between case arrivals, derived as horizon length / num_traces."""
+        minutes = (self.end_date - self.start_date).total_seconds() / 60.0
+        return max(1e-6, minutes / max(1, self.num_traces))
+
     def to_dict(self) -> dict[str, Any]:
         """Plain dict of the parameters for metadata (dates as ISO strings)."""
         return {
@@ -116,7 +121,6 @@ class GeneratorConfig:
             "tree_weights": dict(self.tree_weights),
             "start_date": self.start_date.isoformat(),
             "end_date": self.end_date.isoformat(),
-            "inter_arrival": self.inter_arrival,
             "activity_duration": list(self.activity_duration),
             "waiting_time": list(self.waiting_time),
             "amount": list(self.amount),

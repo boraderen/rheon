@@ -44,7 +44,7 @@ def build_metadata(
             for activity in distributions.activities
         ],
         "amount": {"mean": round(distributions.amount_mean, 2), "var": round(distributions.amount_var, 2)},
-        "inter_arrival": config.inter_arrival,
+        "inter_arrival": round(config.base_inter_arrival, 2),
         "dominant_region": distributions.dominant_region,
         "regions": config.regions,
         "resources": config.resources,
@@ -76,8 +76,9 @@ def _change_record(
     if drift.type == "workload":
         return workload_record or {}
     if drift.type == "arrival_rate":
-        after = float(drift.params.get("inter_arrival", config.inter_arrival * float(drift.params.get("factor", 1.0))))
-        return {"inter_arrival_before": config.inter_arrival, "inter_arrival_after": round(after, 2)}
+        base = config.base_inter_arrival
+        after = float(drift.params.get("inter_arrival", base * float(drift.params.get("factor", 1.0))))
+        return {"inter_arrival_before": round(base, 2), "inter_arrival_after": round(after, 2)}
     if drift.type == "control_flow":
         return {
             "num_activities": int(drift.params.get("num_activities", config.num_activities)),
@@ -112,7 +113,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
     lines += ["", "### Case attributes", ""]
     lines += [
         f"- Amount: mean={_fmt(base['amount']['mean'])}, variance={_fmt(base['amount']['var'])}",
-        f"- Inter-arrival mean: {_fmt(base['inter_arrival'])} minutes",
+        f"- Inter-arrival mean (derived from horizon / num_traces): {_fmt(base['inter_arrival'])} minutes",
         f"- Dominant region: {base['dominant_region']} (of {', '.join(base['regions'])})",
         f"- Resources: {', '.join(base['resources'])}",
     ]

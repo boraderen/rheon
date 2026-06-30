@@ -69,18 +69,22 @@ also drives the output file's suffix.
 
 | Parameter | Default | Meaning |
 | --- | --- | --- |
-| `num_traces` | `1000` | number of cases (workload drift may change the final count) |
+| `num_traces` | `1000` | target number of cases (the `arrival_rate` and `workload` drifts can change the final count) |
 | `num_activities` | `10` | activities in the base process tree |
 | `num_resources` | `8` | size of the resource pool |
 | `num_regions` | `4` | number of regions |
 | `tree_weights` | `{sequence:.6, choice:.25, parallel:.1, loop:.05}` | operator weights for the base tree |
 | `start_date` | `2020-01-01` | start of the time horizon |
-| `end_date` | `2020-12-31` | informational; the realised horizon end is reported in metadata |
-| `inter_arrival` | `60.0` | mean minutes between case arrivals |
+| `end_date` | `2020-12-31` | end of the time horizon (with `start_date` it fixes the window) |
 | `activity_duration` | `(30.0, 100.0)` | `(mean, variance)` of activity processing time in minutes |
 | `waiting_time` | `(15.0, 50.0)` | `(mean, variance)` of the waiting gap between events |
 | `amount` | `(1000.0, 40000.0)` | `(mean, variance)` of the case amount |
-| `seed` | `42` | random seed (same seed → identical log) |
+| `seed` | `42` | random seed |
+
+Cases are spread across `[start_date, end_date]`. The mean inter-arrival gap is **derived** as
+`(end_date − start_date) / num_traces` — there is no `inter_arrival` parameter. The `arrival_rate`
+drift changes that derived rate after its drift point, so the realised case count then drifts away
+from `num_traces`.
 
 ## Output files and metadata
 
