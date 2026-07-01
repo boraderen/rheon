@@ -8,7 +8,9 @@ can evaluate a drift-detection pipeline against.
 ## Install
 
 ```bash
-pip install rheon
+git clone <repo-url> rheon
+cd rheon
+uv sync
 ```
 
 ## Quickstart
@@ -106,10 +108,10 @@ Each run writes two files next to `output_path`:
 
 ## Example
 
-A single ready-to-run script generates one mixed-drift log (as XES and CSV):
+A single ready-to-run script generates one mixed-drift log:
 
 ```bash
-uv run python example/example.py
+uv run python example/generate_log.py
 ```
 
 ## Development

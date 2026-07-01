@@ -152,33 +152,6 @@
       color: #fff;
     }
 
-    .nav-group > .nav-item::before {
-      content: "▸";
-      position: absolute;
-      left: 6px;
-      top: 50%;
-      font-size: 0.7rem;
-      color: var(--muted);
-      transform: translateY(-50%);
-      transition: transform 0.15s ease;
-    }
-
-    .nav-group.open > .nav-item::before {
-      transform: translateY(-50%) rotate(90deg);
-    }
-
-    .nav-group.open > .nav-item.active::before,
-    .nav-group > .nav-item.active::before {
-      color: #fff;
-    }
-
-    .nav-children {
-      display: none;
-      padding-left: 14px;
-    }
-
-    .nav-group.open .nav-children { display: block; }
-
     /* ---------- Main content ---------- */
     main {
       padding: 56px 64px 96px;
@@ -226,8 +199,6 @@
       max-width: 780px;
     }
 
-    p.muted { color: var(--muted); }
-
     a {
       color: var(--accent);
       text-decoration: none;
@@ -260,6 +231,30 @@
       background: transparent;
       padding: 0;
     }
+
+    .code-block { position: relative; margin-top: 16px; }
+    .code-block > pre { margin-top: 0; }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0.55;
+      transition: opacity .15s, color .15s, border-color .15s;
+    }
+    .copy-btn svg { width: 15px; height: 15px; display: block; }
+    .code-block:hover .copy-btn { opacity: 1; }
+    .copy-btn:hover { color: var(--ink); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
 
     table {
       width: 100%;
@@ -296,7 +291,7 @@
     /* ---------- Cards ---------- */
     .card-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 16px;
       margin-top: 16px;
     }
@@ -341,17 +336,6 @@
       font-size: 0.92rem;
     }
 
-    /* ---------- Note callout ---------- */
-    .note {
-      border-left: 3px solid var(--accent);
-      background: var(--accent-soft);
-      padding: 12px 16px;
-      margin-top: 20px;
-      color: var(--ink);
-      border-radius: 0 6px 6px 0;
-      font-size: 0.92rem;
-    }
-
     /* ---------- Responsive ---------- */
     @media (max-width: 880px) {
       .layout { grid-template-columns: 1fr; }
@@ -378,13 +362,6 @@
         <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
       </svg>
     </button>
-    <button aria-label="Search" title="Search">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-           stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="7"></circle>
-        <path d="M21 21l-4.3-4.3"></path>
-      </svg>
-    </button>
   </div>
 </div>
 
@@ -400,7 +377,6 @@
     <a class="nav-item" data-target="drift-modes">Drift modes</a>
     <a class="nav-item" data-target="drift-types">Drift types</a>
     <a class="nav-item" data-target="output">Output &amp; metadata</a>
-    <a class="nav-item" data-target="example">Example</a>
   </aside>
 
   <!-- Main content -->
@@ -409,7 +385,7 @@
     <!-- Welcome -->
     <section class="page active" id="welcome">
       <h1>Rheon</h1>
-      <p class="subtitle">Synthetic XES event-log generation with known concept drift.</p>
+      <p class="subtitle">A library for synthetic event log generation with injected concept drifts.</p>
 
       <div class="card-grid">
         <a class="card" data-target="quick-start">
@@ -423,7 +399,6 @@
             </svg>
           </div>
           <h3>Quick start</h3>
-          <p>Use the API to produce your first labeled XES log.</p>
         </a>
 
         <a class="card" data-target="installation">
@@ -435,12 +410,15 @@
             </svg>
           </div>
           <h3>Installation</h3>
-          <p>Set up the project, dependencies, and the <code>uv</code> runtime.</p>
         </a>
 
         <a class="card" data-target="package-structure">
           <h3>Package structure</h3>
-          <p>See how the public API, drift engines, scripts, and tests are split.</p>
+        </a>
+
+        <a class="card" data-target="api">
+          <h3>API</h3>
+          <p><code>generate_log</code> signature, parameters, and defaults.</p>
         </a>
       </div>
 
@@ -449,19 +427,15 @@
       <div class="card-grid">
         <a class="card" data-target="drift-modes">
           <h3>Drift modes</h3>
-          <p>Two change shapes: <code>sudden</code> and <code>gradual</code>.</p>
+          <p>Two modes: <code>sudden</code> and <code>gradual</code>.</p>
         </a>
         <a class="card" data-target="drift-types">
           <h3>Drift types</h3>
-          <p>Nine drifts across the intra-case, resource, and inter-case perspectives.</p>
+          <p>Nine types across the intra-case, resource, and inter-case perspectives.</p>
         </a>
         <a class="card" data-target="output">
           <h3>Output &amp; metadata</h3>
-          <p>The XES log, the metadata sidecar, and the columns Rheon writes.</p>
-        </a>
-        <a class="card" data-target="example">
-          <h3>Example</h3>
-          <p>One ready-to-run mixed-drift scenario, as XES and CSV.</p>
+          <p>The XES or CSV log plus the metadata.</p>
         </a>
       </div>
     </section>
@@ -480,19 +454,15 @@ drifts = [
     {"type": "amount", "mode": "sudden", "drift_point": 0.6, "mean": 4000},
 ]
 
-# Writes the log and a metadata sidecar; returns nothing.
-rheon.generate_log(drifts, "out/example.xes", num_traces=2000, num_activities=8)
+rheon.generate_log(drifts, "out/example.xes", num_traces=2000, num_activities=8)</code></pre>
 
-# Pass format="csv" to save the log as CSV instead of XES.
-rheon.generate_log(drifts, "out/example.csv", format="csv", num_traces=2000)</code></pre>
+      <p>This writes two files: the log <code>out/example.xes</code> and a ground-truth metadata
+        sidecar <code>out/example_meta.md</code>.</p>
 
-      <p><code>generate_log()</code> does not return anything — it saves the files. To work with the
-        log, read it back:</p>
+      <p>Read the generated log back with pm4py:</p>
       <pre><code>import pm4py
-log = pm4py.read_xes("out/example.xes")   # XES → DataFrame
 
-import pandas as pd
-df = pd.read_csv("out/example.csv")        # CSV → DataFrame</code></pre>
+log = pm4py.read_xes("out/example.xes")</code></pre>
     </section>
 
     <!-- Installation -->
@@ -512,9 +482,22 @@ df = pd.read_csv("out/example.csv")        # CSV → DataFrame</code></pre>
 cd rheon
 uv sync</code></pre>
 
-      <h3>Verify</h3>
-      <p>Run a quick sanity check by generating the example log:</p>
-      <pre><code>uv run python example/example.py</code></pre>
+      <h3>Example</h3>
+      <p>Run the bundled script to generate a labeled log:</p>
+      <pre><code>uv run python example/generate_log.py</code></pre>
+      <p>It injects drifts across every perspective and writes <code>example/example.csv</code> plus
+        its <code>example_meta.md</code> ground-truth sidecar:</p>
+      <pre><code>import rheon
+
+DRIFTS = [
+    {"type": "control_flow", "mode": "sudden", "drift_point": 0.5, "num_activities": 9},
+    {"type": "reassignment", "mode": "gradual", "start_point": 0.30, "end_point": 0.45},
+    {"type": "duration", "mode": "sudden", "drift_point": 0.6, "resources": 2, "factor": 1.8},
+    {"type": "arrival_rate", "mode": "sudden", "drift_point": 0.5, "factor": 0.5},
+    {"type": "amount", "mode": "gradual", "start_point": 0.65, "end_point": 0.85, "mean": 4000},
+]
+
+rheon.generate_log(DRIFTS, "example/example.csv", format="csv", num_traces=2000, num_activities=8)</code></pre>
     </section>
 
     <!-- Package structure -->
@@ -534,7 +517,7 @@ uv sync</code></pre>
   metadata.py      build and render the ground-truth metadata
   write.py         write XES / CSV and the metadata sidecar
 example/
-  example.py       one mixed-drift example
+  generate_log.py  one mixed-drift example
 tests/
   test_*.py        behavior coverage</code></pre>
 
@@ -595,10 +578,10 @@ tests/
         </thead>
         <tbody>
           <tr><td><code>drifts</code></td><td>—</td><td>List of drift dictionaries to inject.</td></tr>
-          <tr><td><code>output_path</code></td><td>—</td><td>Destination of the log; its suffix is set from <code>format</code>.</td></tr>
+          <tr><td><code>output_path</code></td><td>—</td><td>Destination of the log.</td></tr>
           <tr><td><code>log_name</code></td><td>file stem</td><td>Name used in metadata and the sidecar filename.</td></tr>
           <tr><td><code>format</code></td><td><code>"xes"</code></td><td><code>"xes"</code> or <code>"csv"</code>.</td></tr>
-          <tr><td><code>num_traces</code></td><td><code>1000</code></td><td>Target number of cases (the <code>arrival_rate</code> and <code>workload</code> drifts can change the final count).</td></tr>
+          <tr><td><code>num_traces</code></td><td><code>1000</code></td><td>Approximate number of cases (not strict).</td></tr>
           <tr><td><code>num_activities</code></td><td><code>10</code></td><td>Activities in the base process tree.</td></tr>
           <tr><td><code>num_resources</code></td><td><code>8</code></td><td>Size of the resource pool.</td></tr>
           <tr><td><code>num_regions</code></td><td><code>4</code></td><td>Number of regions.</td></tr>
@@ -613,16 +596,8 @@ tests/
       </table>
 
       <p>Cases are spread across <code>[start_date, end_date]</code>. The mean inter-arrival gap is
-        <strong>derived</strong> as <code>(end_date − start_date) / num_traces</code> — there is no
-        <code>inter_arrival</code> parameter. The <code>arrival_rate</code> drift changes that derived
-        rate after its drift point, so the realised case count then drifts away from
-        <code>num_traces</code>.</p>
-
-      <div class="note">
-        <code>generate_log()</code> returns nothing — it writes the log file and a
-        <code>&lt;log_name&gt;_meta.md</code> sidecar. Read the log back with
-        <code>pm4py.read_xes()</code> or <code>pandas.read_csv()</code>.
-      </div>
+        derived as <code>(end_date − start_date) / num_traces</code>. The <code>arrival_rate</code> drift changes that derived
+        rate after its drift point.</p>
     </section>
 
     <!-- Drift modes -->
@@ -655,12 +630,6 @@ tests/
           </tr>
         </tbody>
       </table>
-
-      <div class="note">
-        Rheon validates the drift list before generating. It raises a clear error for an out-of-range
-        position, a gradual window with <code>start_point &gt;= end_point</code>, or two drifts of the
-        same type whose windows overlap.
-      </div>
     </section>
 
     <!-- Drift types -->
@@ -698,8 +667,8 @@ tests/
 
       <h3><code>control_flow</code> · intra-case</h3>
       <p>Cases after the drift are played out from a <em>different</em> process tree, so the
-        activity-ordering structure changes. The new tree is built from the drift's
-        <code>num_activities</code> and <code>tree_weights</code> (falling back to the base values).
+        activity-ordering (trace variants) structure changes. The new tree is built from the drift's
+        <code>num_activities</code> and <code>tree_weights</code>.
         In <strong>sudden</strong> mode every case after <code>drift_point</code> uses the new tree; in
         <strong>gradual</strong> mode a case in the window picks the new tree with the rising window
         probability.</p>
@@ -721,7 +690,7 @@ tests/
       <p>After the drift, <code>workload_factor</code> sets how many traces to add or remove
         (<code>1.0</code> = no change). Added traces are duplicates of existing ones with freshly drawn
         timing, amount, resources and region; removals never drop the last instance of a variant. The
-        total trace count may change — that is expected. <strong>Gradual</strong> mode spreads the
+        total trace count may change. <strong>Gradual</strong> mode spreads the
         duplicates across the window.</p>
 
       <h3><code>duration</code> · resource</h3>
@@ -782,33 +751,6 @@ tests/
         <li><strong>Base distributions</strong> — the starting state: every activity's dominant resource and its duration and waiting distributions <code>(mean, var)</code>, plus the case-level amount distribution, inter-arrival mean and dominant region.</li>
         <li><strong>Drifts</strong> — each drift with its mode and drift point or window (as both a horizon fraction and an absolute timestamp), followed by exactly which distributions or assignments it changed, per activity / resource.</li>
       </ul>
-
-      <div class="note">
-        Because the base state and every drift's changes are recorded, you can evaluate a
-        drift-detection pipeline directly against this file.
-      </div>
-    </section>
-
-    <!-- Example -->
-    <section class="page" id="example">
-      <h1>Example</h1>
-      <p class="subtitle">One mixed-drift scenario, end to end.</p>
-
-      <p>The single script <code>example/example.py</code> generates a log that touches every
-        perspective, as both XES and CSV:</p>
-
-      <pre><code>uv run python example/example.py</code></pre>
-
-      <pre><code>DRIFTS = [
-    {"type": "control_flow", "mode": "sudden", "drift_point": 0.5, "num_activities": 9},
-    {"type": "reassignment", "mode": "gradual", "start_point": 0.30, "end_point": 0.45},
-    {"type": "duration", "mode": "sudden", "drift_point": 0.6, "resources": 2, "factor": 1.8},
-    {"type": "arrival_rate", "mode": "sudden", "drift_point": 0.5, "factor": 0.5},
-    {"type": "amount", "mode": "gradual", "start_point": 0.65, "end_point": 0.85, "mean": 4000},
-]
-
-rheon.generate_log(DRIFTS, "data/example/example.xes", num_traces=2000)
-rheon.generate_log(DRIFTS, "data/example/example.csv", format="csv", num_traces=2000)</code></pre>
     </section>
 
   </main>
@@ -820,7 +762,7 @@ rheon.generate_log(DRIFTS, "data/example/example.csv", format="csv", num_traces=
   const pages = document.querySelectorAll('.page');
   const cards = document.querySelectorAll('.card[data-target]');
 
-  function showPage(targetId, options = {}) {
+  function showPage(targetId) {
     if (!targetId) return;
     let found = false;
     pages.forEach(p => {
@@ -847,13 +789,7 @@ rheon.generate_log(DRIFTS, "data/example/example.csv", format="csv", num_traces=
     item.addEventListener('click', e => {
       e.preventDefault();
       const target = item.getAttribute('data-target');
-      const parentGroup = item.parentElement;
-      const isGroupParent = parentGroup && parentGroup.classList.contains('nav-group') && item === parentGroup.firstElementChild;
-      if (isGroupParent) {
-        parentGroup.classList.toggle('open');
-      }
-
-      showPage(target, { preserveGroupState: isGroupParent });
+      showPage(target);
     });
   });
 
@@ -882,6 +818,47 @@ rheon.generate_log(DRIFTS, "data/example/example.csv", format="csv", num_traces=
       document.documentElement.setAttribute('data-theme', 'dark');
       localStorage.setItem('rheon-theme', 'dark');
     }
+  });
+
+  // Copy button on every code block
+  const COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="13" height="13" rx="2.5"/><path d="M8 16v3a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-3"/></svg>';
+  const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  document.querySelectorAll('pre').forEach(pre => {
+    const code = pre.querySelector('code');
+    if (!code) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-block';
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(pre);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.setAttribute('aria-label', 'Copy code');
+    btn.title = 'Copy';
+    btn.innerHTML = COPY_ICON;
+    wrapper.appendChild(btn);
+
+    btn.addEventListener('click', async () => {
+      const text = code.innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        try { document.execCommand('copy'); } catch (_) {}
+        sel.removeAllRanges();
+      }
+      btn.innerHTML = CHECK_ICON;
+      btn.classList.add('copied');
+      btn.title = 'Copied';
+      setTimeout(() => { btn.innerHTML = COPY_ICON; btn.classList.remove('copied'); btn.title = 'Copy'; }, 1500);
+    });
   });
 </script>
 
