@@ -7,7 +7,7 @@ The only Rheon function you need to use is `rheon.generate_log()`.
 ## Install
 
 ```bash
-git clone <repo-url> rheon
+git clone git@github.com:boraderen/rheon.git
 cd rheon
 uv sync
 ```
