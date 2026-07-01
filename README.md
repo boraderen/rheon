@@ -210,6 +210,17 @@ attribute.
      activity / resource (e.g. a reassignment's before → after resource table, or an amount drift's
      `mean: 1000 → 4000`).
 
+## Testing
+
+Run the test suite with:
+
+```bash
+uv run pytest
+```
+
+The current tests cover drift validation, readable XES/CSV generation, metadata basics, and a few
+behavior checks such as pool growth and workload increase.
+
 
 
 ## License & status
