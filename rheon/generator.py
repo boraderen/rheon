@@ -28,7 +28,7 @@ from rheon.config import (
 from rheon.drifts import Drift, drifts_of, normalize_drifts
 from rheon.metadata import build_metadata
 from rheon.process_tree import activities_in_tree, build_tree, playout_pool, sample_trace
-from rheon.xes import write_csv, write_metadata_file, write_xes
+from rheon.write import write_csv, write_metadata_file, write_xes
 
 
 # --- Internal working structures --------------------------------------------
@@ -117,7 +117,7 @@ def _generate(
 
     # 5. apply the remaining drifts (attributes / timing first, workload last)
     records, state = _apply_drifts(config, cases, drifts, distributions, position, rng)
-    workload_record = _apply_workload(config, cases, drifts, distributions, state, horizon_end, rng)
+    workload_record = _apply_workload(config, cases, drifts, distributions, state, horizon_end, position, rng)
 
     # 6. materialise the event table and the metadata
     dataframe = _assemble(cases)
@@ -494,6 +494,7 @@ def _apply_workload(
     dist: Distributions,
     state: dict[str, Any],
     horizon_end: datetime,
+    position: Any,
     rng: np.random.Generator,
 ) -> dict[str, Any] | None:
     """Add duplicate traces (or remove some) after the drift to change per-resource case load."""
@@ -502,7 +503,7 @@ def _apply_workload(
         return None
     drift = workload[0]
     factor = float(drift.params.get("workload_factor", 1.0))
-    affected = [c for c in cases if _frac(c.start, config.start_date, horizon_end) >= drift.start_frac]
+    affected = [c for c in cases if position(c.start) >= drift.start_frac]
     change = int(round(len(affected) * (factor - 1.0)))
 
     if change > 0:
@@ -617,12 +618,6 @@ def _position_fn(start_date: datetime, horizon_end: datetime):
         return min(1.0, max(0.0, (timestamp - start_date).total_seconds() / span))
 
     return position
-
-
-def _frac(timestamp: datetime, start_date: datetime, horizon_end: datetime) -> float:
-    """Position of a single timestamp within the horizon (clamped to [0, 1])."""
-    span = max(1.0, (horizon_end - start_date).total_seconds())
-    return min(1.0, max(0.0, (timestamp - start_date).total_seconds() / span))
 
 
 def _positive_normal(mean: float, var: float, rng: np.random.Generator) -> float:

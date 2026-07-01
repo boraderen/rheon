@@ -104,20 +104,6 @@ Each run writes two files next to `output_path`:
      activity / resource (e.g. a reassignment's before → after resource table, or an amount drift's
      `mean: 1000 → 4000`).
 
-## Validation
-
-`validate_xes` re-reads a written log and checks it is well-formed, schema-correct, time-ordered and
-consistent with its embedded drift metadata:
-
-```python
-import rheon
-
-issues = rheon.validate_xes("out/example.xes")
-print(rheon.validation_passed(issues))   # True when there are no errors
-for issue in issues:
-    print(issue["severity"], issue["message"])
-```
-
 ## Example
 
 A single ready-to-run script generates one mixed-drift log (as XES and CSV):

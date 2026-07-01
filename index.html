@@ -400,7 +400,6 @@
     <a class="nav-item" data-target="drift-modes">Drift modes</a>
     <a class="nav-item" data-target="drift-types">Drift types</a>
     <a class="nav-item" data-target="output">Output &amp; metadata</a>
-    <a class="nav-item" data-target="validation">Validation</a>
     <a class="nav-item" data-target="example">Example</a>
   </aside>
 
@@ -460,9 +459,9 @@
           <h3>Output &amp; metadata</h3>
           <p>The XES log, the metadata sidecar, and the columns Rheon writes.</p>
         </a>
-        <a class="card" data-target="validation">
-          <h3>Validation</h3>
-          <p>Re-read a log and check it against its own ground truth.</p>
+        <a class="card" data-target="example">
+          <h3>Example</h3>
+          <p>One ready-to-run mixed-drift scenario, as XES and CSV.</p>
         </a>
       </div>
     </section>
@@ -523,7 +522,7 @@ uv sync</code></pre>
       <h1>Package structure</h1>
       <p class="subtitle">How the public API and implementation are split.</p>
 
-      <p>The package exposes <code>rheon.generate_log</code> and <code>rheon.validate_xes</code> from
+      <p>The package exposes a single function, <code>rheon.generate_log</code>, from
         <code>rheon/__init__.py</code>. The implementation is just seven small modules.</p>
 
       <pre><code>rheon/
@@ -533,7 +532,7 @@ uv sync</code></pre>
   process_tree.py  build trees and play out activity sequences
   generator.py     the generation engine (the six steps)
   metadata.py      build and render the ground-truth metadata
-  xes.py           write XES / CSV (+ sidecar) and validate
+  write.py         write XES / CSV and the metadata sidecar
 example/
   example.py       one mixed-drift example
 tests/
@@ -552,7 +551,7 @@ tests/
           <tr><td><code>rheon/process_tree.py</code></td><td>Builds process trees and plays out traces.</td></tr>
           <tr><td><code>rheon/generator.py</code></td><td>The generation engine and the public <code>generate_log</code>.</td></tr>
           <tr><td><code>rheon/metadata.py</code></td><td>Assembles and renders the ground-truth metadata.</td></tr>
-          <tr><td><code>rheon/xes.py</code></td><td>Writes the XES file and validates it.</td></tr>
+          <tr><td><code>rheon/write.py</code></td><td>Writes the log (XES or CSV) and the metadata sidecar.</td></tr>
         </tbody>
       </table>
     </section>
@@ -790,28 +789,6 @@ tests/
       </div>
     </section>
 
-    <!-- Validation -->
-    <section class="page" id="validation">
-      <h1>Validation</h1>
-      <p class="subtitle">Re-read a log and check it against its own ground truth.</p>
-
-      <p><code>validate_xes</code> imports a written log and verifies it is well-formed, schema-correct,
-        time-ordered within each case, and that every drift point recorded in the metadata falls inside
-        the log's time range.</p>
-
-      <pre><code>import rheon
-
-issues = rheon.validate_xes("out/example.xes")
-print(rheon.validation_passed(issues))   # True when there are no errors
-
-for issue in issues:
-    print(issue["severity"], issue["message"])</code></pre>
-
-      <p>Each issue is a dict with <code>severity</code> (<code>"error"</code> or <code>"warning"</code>),
-        a <code>code</code>, and a <code>message</code>. <code>validation_passed</code> returns
-        <code>True</code> when there are no errors.</p>
-    </section>
-
     <!-- Example -->
     <section class="page" id="example">
       <h1>Example</h1>
@@ -831,10 +808,7 @@ for issue in issues:
 ]
 
 rheon.generate_log(DRIFTS, "data/example/example.xes", num_traces=2000)
-rheon.generate_log(DRIFTS, "data/example/example.csv", format="csv", num_traces=2000)
-
-issues = rheon.validate_xes("data/example/example.xes")
-print(rheon.validation_passed(issues))</code></pre>
+rheon.generate_log(DRIFTS, "data/example/example.csv", format="csv", num_traces=2000)</code></pre>
     </section>
 
   </main>
