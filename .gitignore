@@ -16,7 +16,7 @@ dist/
 /example/*_meta.md
 
 # Local generated docs
-/workflow_latex/
+/paper/
 
 # Testing
 .pytest_cache/
