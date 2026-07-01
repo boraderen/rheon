@@ -12,6 +12,11 @@ dist/
 
 # Generated logs
 /data/
+/example/*.csv
+/example/*_meta.md
+
+# Local generated docs
+/workflow_latex/
 
 # Testing
 .pytest_cache/
