@@ -370,8 +370,8 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <a class="nav-item active" data-target="welcome">Welcome</a>
-    <a class="nav-item" data-target="quick-start">Quick start</a>
     <a class="nav-item" data-target="installation">Installation</a>
+    <a class="nav-item" data-target="quick-start">Quick start</a>
     <a class="nav-item" data-target="package-structure">Package structure</a>
     <a class="nav-item" data-target="api">API</a>
     <a class="nav-item" data-target="drift-modes">Drift modes</a>
@@ -388,6 +388,17 @@
       <p class="subtitle">A library for synthetic event log generation with injected concept drifts.</p>
 
       <div class="card-grid">
+        <a class="card" data-target="installation">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12l10-9 10 9-10 9z"/>
+              <path d="M2 12l10 9 10-9"/>
+            </svg>
+          </div>
+          <h3>Installation</h3>
+        </a>
+
         <a class="card" data-target="quick-start">
           <div class="card-icon">
             <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
@@ -399,17 +410,6 @@
             </svg>
           </div>
           <h3>Quick start</h3>
-        </a>
-
-        <a class="card" data-target="installation">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
-                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 12l10-9 10 9-10 9z"/>
-              <path d="M2 12l10 9 10-9"/>
-            </svg>
-          </div>
-          <h3>Installation</h3>
         </a>
 
         <a class="card" data-target="package-structure">
@@ -486,18 +486,7 @@ uv sync</code></pre>
       <p>Run the bundled script to generate a labeled log:</p>
       <pre><code>uv run python example/generate_log.py</code></pre>
       <p>It injects drifts across every perspective and writes <code>example/example.csv</code> plus
-        its <code>example_meta.md</code> ground-truth sidecar:</p>
-      <pre><code>import rheon
-
-DRIFTS = [
-    {"type": "control_flow", "mode": "sudden", "drift_point": 0.5, "num_activities": 9},
-    {"type": "reassignment", "mode": "gradual", "start_point": 0.30, "end_point": 0.45},
-    {"type": "duration", "mode": "sudden", "drift_point": 0.6, "resources": 2, "factor": 1.8},
-    {"type": "arrival_rate", "mode": "sudden", "drift_point": 0.5, "factor": 0.5},
-    {"type": "amount", "mode": "gradual", "start_point": 0.65, "end_point": 0.85, "mean": 4000},
-]
-
-rheon.generate_log(DRIFTS, "example/example.csv", format="csv", num_traces=2000, num_activities=8)</code></pre>
+        its <code>example_meta.md</code> ground-truth sidecar.</p>
     </section>
 
     <!-- Package structure -->
