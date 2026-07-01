@@ -50,6 +50,15 @@ import pm4py
 log = pm4py.read_xes("out/example.xes")
 ```
 
+## Drift modes
+
+Every drift declares a `mode` and a position. All positions are fractions of the time horizon in
+`(0, 1)`, where `0.5` is the midpoint.
+
+| Mode      | Position keys                | Behavior                                                                                  |
+| --------- | ---------------------------- | ----------------------------------------------------------------------------------------- |
+| `sudden`  | `drift_point`                | A hard switch: everything after `drift_point` uses the new behavior.                      |
+| `gradual` | `start_point`, `end_point`   | A transition window: the new behavior is mixed in with a probability that rises linearly. |
 
 
 ## Drift types
