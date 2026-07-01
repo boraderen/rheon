@@ -74,6 +74,72 @@ fractions of the time horizon in `(0, 1)`. The remaining keys are type-specific.
 
 
 
+### Example valid drift specs
+
+The following `drifts` list is valid with the default generator labels
+(`res_01` ... `res_08` and `region_1` ... `region_4`). Use any subset of these
+dicts; if you add multiple drifts of the same `type`, their windows must not overlap.
+
+```python
+drifts = [
+    {
+        "type": "control_flow",
+        "mode": "sudden",
+        "drift_point": 0.35,
+        "num_activities": 9,
+        "tree_weights": {"sequence": 0.50, "choice": 0.30, "parallel": 0.15, "loop": 0.05},
+    },
+    {
+        "type": "pool_size",
+        "mode": "gradual",
+        "start_point": 0.20,
+        "end_point": 0.30,
+        "delta": 2,
+        "duration_factor": 1.25,
+    },
+    {"type": "reassignment", "mode": "sudden", "drift_point": 0.40},
+    {
+        "type": "workload",
+        "mode": "gradual",
+        "start_point": 0.70,
+        "end_point": 0.85,
+        "workload_factor": 1.40,
+    },
+    {
+        "type": "duration",
+        "mode": "sudden",
+        "drift_point": 0.55,
+        "resources": ["res_01", "res_02"],
+        "factor": 1.80,
+    },
+    {
+        "type": "waiting_time",
+        "mode": "gradual",
+        "start_point": 0.45,
+        "end_point": 0.60,
+        "mean": 45.0,
+        "variance": 80.0,
+    },
+    {
+        "type": "amount",
+        "mode": "sudden",
+        "drift_point": 0.65,
+        "mean": 3000.0,
+        "variance": 90000.0,
+    },
+    {
+        "type": "arrival_rate",
+        "mode": "sudden",
+        "drift_point": 0.50,
+        "inter_arrival": 240.0,
+    },
+    {"type": "region", "mode": "gradual", "start_point": 0.75, "end_point": 0.90},
+]
+```
+
+For `arrival_rate`, use either an absolute `inter_arrival` value in minutes as shown above or a
+relative `factor`, for example `{"type": "arrival_rate", "mode": "sudden", "drift_point": 0.50, "factor": 0.5}`.
+
 ## Parameters
 
 Function signature and generator options for `rheon.generate_log()`:
