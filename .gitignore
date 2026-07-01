@@ -17,6 +17,8 @@ dist/
 
 # Local generated docs
 /paper/
+/papers/
+/notebooks
 
 # Testing
 .pytest_cache/
