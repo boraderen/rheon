@@ -75,7 +75,7 @@ fractions of the time horizon in `(0, 1)`. The remaining keys are type-specific.
 | resource    | `reassignment` | a new dominant resource is chosen for every activity                                            | —                                |
 | resource    | `workload`     | traces are duplicated (or dropped); per-resource case load shifts                               | `workload_factor`                |
 | resource    | `duration`     | the processing time of the given resources is scaled                                            | `resources`, `factor`            |
-| inter-case  | `waiting_time` | the mean waiting gap between events shifts                                                      | `mean`, `variance`               |
+| inter-case  | `waiting_time` | the mean waiting gap between consecutive events of a case shifts (all activities at once)       | `mean`, `variance`               |
 | inter-case  | `amount`       | case amounts are drawn from a shifted distribution                                              | `mean`, `variance`               |
 | inter-case  | `arrival_rate` | the mean gap between case arrivals changes                                                      | `inter_arrival` or `factor`      |
 | inter-case  | `region`       | a new dominant region is chosen for later cases                                                 | —                                |

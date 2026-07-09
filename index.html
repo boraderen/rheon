@@ -662,7 +662,7 @@ tests/
           <tr><td>resource</td><td><code>reassignment</code></td><td>A new dominant resource per activity.</td><td>—</td></tr>
           <tr><td>resource</td><td><code>workload</code></td><td>Traces duplicated or dropped; per-resource load shifts.</td><td><code>workload_factor</code></td></tr>
           <tr><td>resource</td><td><code>duration</code></td><td>Processing time of the given resources is scaled.</td><td><code>resources</code>, <code>factor</code></td></tr>
-          <tr><td>inter-case</td><td><code>waiting_time</code></td><td>The mean waiting gap between events shifts.</td><td><code>mean</code>, <code>variance</code></td></tr>
+          <tr><td>inter-case</td><td><code>waiting_time</code></td><td>The mean waiting gap between consecutive events of a case shifts (all activities at once).</td><td><code>mean</code>, <code>variance</code></td></tr>
           <tr><td>inter-case</td><td><code>amount</code></td><td>Case amounts drawn from a shifted distribution.</td><td><code>mean</code>, <code>variance</code></td></tr>
           <tr><td>inter-case</td><td><code>arrival_rate</code></td><td>The mean gap between case arrivals changes.</td><td><code>inter_arrival</code> or <code>factor</code></td></tr>
           <tr><td>inter-case</td><td><code>region</code></td><td>A new dominant region for later cases.</td><td>—</td></tr>
@@ -771,8 +771,11 @@ tests/
 
       <h3><code>waiting_time</code> · inter-case</h3>
       <p>The mean of the waiting gap between events shifts to <code>mean</code> after the drift — the
-        main driver of throughput time. <strong>Gradual</strong> mode blends each gap from its old value
-        toward the new mean across the window.</p>
+        main driver of throughput time. A gap is the idle time between consecutive events of the same
+        case, and every activity's waiting distribution is updated to the new
+        (<code>mean</code>, <code>variance</code>), so all activities shift at once.
+        <strong>Gradual</strong> mode blends each gap from its old value toward the new mean across the
+        window.</p>
 
       <h3><code>amount</code> · inter-case</h3>
       <p>Case amounts after the drift are drawn from a shifted distribution (<code>mean</code>,
