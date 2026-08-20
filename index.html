@@ -4,37 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rheon documentation</title>
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#f5f8ff">
   <style>
     :root {
       --bg: #ffffff;
       --sidebar-bg: #ffffff;
-      --topbar-bg: #2a2d33;
-      --topbar-fg: #f3f4f6;
-      --topbar-muted: #b8bcc4;
+      --topbar-bg: #f5f8ff;
+      --topbar-fg: #16224a;
+      --topbar-line: #dde5f6;
       --ink: #1e1f22;
       --muted: #5e6470;
       --line: #e5e6ea;
       --soft: #f5f6f7;
-      --accent: #3574f0;
-      --accent-soft: #eaf1fe;
+      --accent: #2b5fe3;
+      --accent-soft: #e9f0ff;
       --code-bg: #f5f6f7;
       --card-hover: #fafafb;
-    }
-
-    [data-theme="dark"] {
-      --bg: #1e1f22;
-      --sidebar-bg: #1e1f22;
-      --topbar-bg: #1b1d23;
-      --topbar-fg: #e9eaee;
-      --topbar-muted: #9a9fab;
-      --ink: #e9eaee;
-      --muted: #9a9fab;
-      --line: #2f3137;
-      --soft: #26272c;
-      --accent: #3574f0;
-      --accent-soft: #1f2c4a;
-      --code-bg: #26272c;
-      --card-hover: #26272c;
     }
 
     * { box-sizing: border-box; }
@@ -61,7 +49,7 @@
       display: flex;
       align-items: center;
       padding: 0 24px;
-      border-bottom: 1px solid #000;
+      border-bottom: 1px solid var(--topbar-line);
     }
 
     .topbar-brand {
@@ -72,47 +60,20 @@
     }
 
     .topbar-logo {
-      width: 58px;
-      height: 20px;
+      height: 22px;
+      width: auto;
+      display: block;
       object-fit: contain;
       flex: 0 0 auto;
     }
 
     .topbar-title {
       font-size: 0.95rem;
-      font-weight: 500;
+      font-weight: 600;
+      letter-spacing: -0.005em;
       color: var(--topbar-fg);
       white-space: nowrap;
     }
-
-    .topbar-spacer { flex: 1; }
-
-    .topbar-controls {
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      color: var(--topbar-muted);
-      font-size: 0.9rem;
-    }
-
-    .topbar-controls button {
-      background: transparent;
-      border: 0;
-      color: var(--topbar-muted);
-      cursor: pointer;
-      padding: 6px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-    }
-
-    .topbar-controls button:hover {
-      color: var(--topbar-fg);
-      background: rgba(255,255,255,0.06);
-    }
-
-    .topbar-controls .icon { width: 18px; height: 18px; }
 
     /* ---------- Layout ---------- */
     .layout {
@@ -313,8 +274,6 @@
       border-color: #c8cad0;
     }
 
-    [data-theme="dark"] .card:hover { border-color: #444751; }
-
     .card-icon {
       width: 36px;
       height: 36px;
@@ -352,16 +311,6 @@
   <div class="topbar-brand">
     <img class="topbar-logo" src="rheon.png" alt="" aria-hidden="true">
     <span class="topbar-title">Rheon documentation</span>
-  </div>
-  <span class="topbar-spacer"></span>
-  <div class="topbar-controls">
-    <button id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-           stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="4"></circle>
-        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-      </svg>
-    </button>
   </div>
 </div>
 
@@ -876,22 +825,6 @@ tests/
   // Initial route from hash
   const initial = location.hash ? location.hash.slice(1) : 'welcome';
   showPage(initial);
-
-  // Theme toggle (persisted)
-  const themeBtn = document.getElementById('themeToggle');
-  const savedTheme = localStorage.getItem('rheon-theme');
-  if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-
-  themeBtn.addEventListener('click', () => {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    if (isDark) {
-      document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem('rheon-theme', 'light');
-    } else {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      localStorage.setItem('rheon-theme', 'dark');
-    }
-  });
 
   // Copy button on every code block
   const COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="13" height="13" rx="2.5"/><path d="M8 16v3a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-3"/></svg>';
