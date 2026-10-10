@@ -1,3 +1,5 @@
+<img src="rheon.png" alt="Rheon icon" width="96">
+
 # Rheon
 
 A library for synthetic event log generation with injected concept drifts. You describe a base
