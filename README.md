@@ -1,8 +1,10 @@
 # Rheon
 
-A library for synthetic event log generation with injected concept drifts. You describe a base process and a list of drifts and Rheon produces the log plus a metadata file that records exactly where each drift is and what it changed.
+A library for synthetic event log generation with injected concept drifts. You describe a base
+process and a list of drifts, and Rheon writes the log (XES or CSV) plus a metadata file that records
+exactly where each drift is and what it changed.
 
-The only Rheon function you need to use is `rheon.generate_log()`.
+**Documentation:** https://boraderen.github.io/rheon/
 
 ## Install
 
@@ -12,20 +14,7 @@ cd rheon
 uv sync
 ```
 
-### Example
-
-Run the bundled script to generate a labeled log:
-
-```bash
-uv run python example/generate_log.py
-```
-
-It injects drifts across every perspective and writes `example/example.csv` plus its
-`example_meta.md` ground-truth sidecar.
-
-## Quickstart
-
-Describe a base process and a list of drifts, then write a labeled log.
+## Quick start
 
 ```python
 import rheon
@@ -39,199 +28,62 @@ drifts = [
 rheon.generate_log(drifts, "out/example.xes", num_traces=2000, num_activities=8)
 ```
 
-This writes two files: the log `out/example.xes` and a ground-truth metadata sidecar
-`out/example_meta.md`.
+This writes the log `out/example.xes` and its ground truth `out/example_meta.md`. The drift modes,
+the nine drift types and all options are described in the
+[documentation](https://boraderen.github.io/rheon/).
 
-Read the generated log back with pm4py:
+## Generation and output
 
-```python
-import pm4py
+Rheon validates the configuration and drift list, builds process-tree versions and playout pools,
+and initializes distributions for the union of their activities. It samples case arrivals with
+both `arrival_rate` and `workload` drift, then samples each case's activity sequence from the
+appropriate pool. Reassignment, region, amount, waiting-time and pool-size drifts run by start
+fraction; duration drifts run afterward so they follow final resource assignments. Ties retain
+input order. Workload changes arrival density; it does not duplicate or delete existing cases.
 
-log = pm4py.read_xes("out/example.xes")
-```
+Event drifts use the original event start times stored before attribute changes. Final timestamps
+are recomputed afterward, rounded to UTC whole seconds, and durations are recalculated in minutes.
+The horizon bounds case arrivals, so events can finish beyond its end. The CSV columns are
+`event:id`, `case:concept:name`, `concept:name`, `start_timestamp`, `time:timestamp`,
+`event:duration_min`, `org:resource`, `case:amount` and `case:region`. Amount and region repeat
+on each case's events; in XES they are trace attributes, and full metadata is embedded in
+`rheon:metadata`. Reference event times and per-event drift labels are not exported.
 
-## Drift modes
+Successive arrival-rate factors multiply the previous gap level; workload factors multiply the
+previous workload level. Pool shrinkage multiplies durations by `duration_factor`, while growth
+uses its reciprocal. Any positive factor is accepted, so a value below 1 reverses the default
+slower-on-shrinkage behavior. Added resources receive distinct dominant activities only until
+the activity list runs out. Resources have no capacity limit.
 
-Every drift declares a `mode` and a position. All positions are fractions of the time horizon in
-`(0, 1)`, where `0.5` is the midpoint.
+The seed controls random draws, but PM4Py can interleave parallel branches differently between
+runs. Save generated logs and metadata when exact experimental replication is needed.
 
-| Mode      | Position keys                | Behavior                                                                                  |
-| --------- | ---------------------------- | ----------------------------------------------------------------------------------------- |
-| `sudden`  | `drift_point`                | A hard switch: everything after `drift_point` uses the new behavior.                      |
-| `gradual` | `start_point`, `end_point`   | A transition window: the new behavior is mixed in with a probability that rises linearly. |
-
-
-## Drift types
-
-Every drift is one dict with a `type`, a `mode` (`"sudden"` or `"gradual"`), and a position:
-`drift_point` for sudden drifts, or `start_point`/`end_point` for gradual ones. All positions are
-fractions of the time horizon in `(0, 1)`. The remaining keys are type-specific.
-
-
-| Perspective | Type           | What changes                                                                                    | Type-specific params             |
-| ----------- | -------------- | ----------------------------------------------------------------------------------------------- | -------------------------------- |
-| intra-case  | `control_flow` | activity-ordering structure: cases after the drift are played out from a different process tree | `num_activities`, `tree_weights` |
-| resource    | `pool_size`    | resources are added or removed; durations scale the opposite way                                | `delta`, `duration_factor`       |
-| resource    | `reassignment` | a new dominant resource is chosen for every activity                                            | —                                |
-| resource    | `workload`     | traces are duplicated (or dropped); per-resource case load shifts                               | `workload_factor`                |
-| resource    | `duration`     | the processing time of the given resources is scaled                                            | `resources`, `factor`            |
-| inter-case  | `waiting_time` | the mean waiting gap between consecutive events of a case shifts (all activities at once)       | `mean`, `variance`               |
-| inter-case  | `amount`       | case amounts are drawn from a shifted distribution                                              | `mean`, `variance`               |
-| inter-case  | `arrival_rate` | the mean gap between case arrivals changes                                                      | `inter_arrival` or `factor`      |
-| inter-case  | `region`       | a new dominant region is chosen for later cases                                                 | —                                |
-
-
-
-
-### Example valid drift specs
-
-The following `drifts` list is valid with the default generator labels
-(`res_01` ... `res_08` and `region_1` ... `region_4`). Use any subset of these
-dicts; if you add multiple drifts of the same `type`, their windows must not overlap.
-
-```python
-drifts = [
-    {
-        "type": "control_flow",
-        "mode": "sudden",
-        "drift_point": 0.35,
-        "num_activities": 9,
-        "tree_weights": {"sequence": 0.50, "choice": 0.30, "parallel": 0.15, "loop": 0.05},
-    },
-    {
-        "type": "pool_size",
-        "mode": "gradual",
-        "start_point": 0.20,
-        "end_point": 0.30,
-        "delta": 2,
-        "duration_factor": 1.25,
-    },
-    {"type": "reassignment", "mode": "sudden", "drift_point": 0.40},
-    {
-        "type": "workload",
-        "mode": "gradual",
-        "start_point": 0.70,
-        "end_point": 0.85,
-        "workload_factor": 1.40,
-    },
-    {
-        "type": "duration",
-        "mode": "sudden",
-        "drift_point": 0.55,
-        "resources": ["res_01", "res_02"],
-        "factor": 1.80,
-    },
-    {
-        "type": "waiting_time",
-        "mode": "gradual",
-        "start_point": 0.45,
-        "end_point": 0.60,
-        "mean": 45.0,
-        "variance": 80.0,
-    },
-    {
-        "type": "amount",
-        "mode": "sudden",
-        "drift_point": 0.65,
-        "mean": 3000.0,
-        "variance": 90000.0,
-    },
-    {
-        "type": "arrival_rate",
-        "mode": "sudden",
-        "drift_point": 0.50,
-        "inter_arrival": 240.0,
-    },
-    {"type": "region", "mode": "gradual", "start_point": 0.75, "end_point": 0.90},
-]
-```
-
-For `arrival_rate`, use either an absolute `inter_arrival` value in minutes as shown above or a
-relative `factor`, for example `{"type": "arrival_rate", "mode": "sudden", "drift_point": 0.50, "factor": 0.5}`.
-
-## Parameters
-
-Function signature and generator options for `rheon.generate_log()`:
-
-```python
-rheon.generate_log(
-    drifts,
-    output_path,
-    *,
-    log_name=None,
-    format="xes",          # "xes" or "csv"
-    num_traces=1000,
-    num_activities=10,
-    num_resources=8,
-    num_regions=4,
-    tree_weights={"sequence": 0.6, "choice": 0.25, "parallel": 0.1, "loop": 0.05},
-    start_date=datetime(2020, 1, 1),
-    end_date=datetime(2020, 12, 31),
-    activity_duration=(30.0, 100.0),
-    waiting_time=(15.0, 50.0),
-    amount=(1000.0, 40000.0),
-    seed=42,
-)
-```
-
-`drifts` is a list of dictionaries, each with a `type`, a `mode`, and a position. The parameters
-below all describe the single base process.
-
-
-| Argument            | Default             | Description                                                                    |
-| ------------------- | ------------------- | ------------------------------------------------------------------------------ |
-| `drifts`            | —                   | List of drift dictionaries to inject.                                          |
-| `output_path`       | —                   | Destination of the log.                                                        |
-| `log_name`          | file stem           | Name used in metadata and the sidecar filename.                                |
-| `format`            | `"xes"`             | `"xes"` or `"csv"`.                                                            |
-| `num_traces`        | `1000`              | Approximate number of cases (not strict).                                      |
-| `num_activities`    | `10`                | Activities in the base process tree.                                           |
-| `num_resources`     | `8`                 | Size of the resource pool.                                                     |
-| `num_regions`       | `4`                 | Number of regions.                                                             |
-| `tree_weights`      | see above           | Operator weights for the base tree (`sequence`, `choice`, `parallel`, `loop`). |
-| `start_date`        | `2020-01-01`        | Start of the time horizon.                                                     |
-| `end_date`          | `2020-12-31`        | End of the time horizon (with `start_date` it fixes the window).               |
-| `activity_duration` | `(30.0, 100.0)`     | `(mean, variance)` of activity processing time in minutes.                     |
-| `waiting_time`      | `(15.0, 50.0)`      | `(mean, variance)` of the waiting gap between events.                          |
-| `amount`            | `(1000.0, 40000.0)` | `(mean, variance)` of the case amount.                                         |
-| `seed`              | `42`                | Random seed.                                                                   |
-
-
-Cases are spread across `[start_date, end_date]`. The mean inter-arrival gap is derived as
-`(end_date − start_date) / num_traces`. The `arrival_rate` drift changes that derived rate after
-its drift point.
-
-## Output files and metadata
-
-Each run writes two files next to `output_path`:
-
-- `<name>.xes` (or `<name>.csv`) — the event log. Events carry `concept:name`,
-`start_timestamp`, `time:timestamp`, `event:duration_min` and `org:resource`; each case carries
-`amount` and `region`. For XES the full metadata is also embedded as a log-level `rheon:metadata`
-attribute.
-- `<name>_meta.md` — a short, readable ground-truth report with three sections:
-  1. **General parameters** — the structural, temporal and attribute parameters of the run.
-  2. **Base distributions** — the starting state: every activity's dominant resource and its duration
-    and waiting distributions `(mean, var)`, plus the case-level amount distribution, inter-arrival
-     mean and dominant region.
-  3. **Drifts** — each drift with its mode and drift point / window (as both a horizon fraction and an
-    absolute timestamp), followed by exactly which distributions or assignments it changed, per
-     activity / resource (e.g. a reassignment's before → after resource table, or an amount drift's
-     `mean: 1000 → 4000`).
-
-## Testing
-
-Run the test suite with:
+## Example and tests
 
 ```bash
+uv run python example/generate_log.py   # writes example/example.csv and example/example_meta.md
 uv run pytest
 ```
 
-The current tests cover drift validation, readable XES/CSV generation, metadata basics, and a few
-behavior checks such as pool growth and workload increase.
+The paper examples use three logs, each with one sudden midpoint drift, and one plot per log:
+`control_flow.csv` changes a five-step sequence into two short branches (side-by-side directly-follows count matrices),
+`resource_reassignment.csv` uses three resources and changes each activity's dominant resource
+(side-by-side activity-resource frequency matrices), and `arrival_rate.csv` increases the arrival gap by 20× so the arrival rate drops to
+5% (dotted chart). The matrices use the entire log, split by case arrival for directly-follows counts and event
+start for activity-resource counts. The plots retain the notebooks' counting and case-ordering logic. Rebuild them with:
 
+```bash
+uv run --with matplotlib python example/generate_paper_examples.py
+uv run --with matplotlib python example/generate_paper_examples.py --plots-only
+uv run --with matplotlib python example/generate_paper_examples.py --regenerate resource_reassignment
+latexmk -pdf -cd paper/paper.tex
+```
 
-
-## License & status
-
-Rheon is research software for generating drift benchmarks.
+The first command resamples the logs and updates their metadata, plots and paper table rows.
+The second rebuilds plots and tables from saved logs. The third resamples only the resource log
+and rebuilds the plots and tables. Generated files are under `paper/logs`,
+`paper/figures` and `paper/generated`; the manifest records settings, package versions and CSV hashes.
+The manifest also records measured drift signals. Each base process has five activities, no
+parallelism or loops and three regions. The reassignment example has three resources; the other
+two have four; the control-flow change adds a choice.
+The local `paper/` directory is ignored by Git, so keep its artifacts alongside the paper when sharing it.

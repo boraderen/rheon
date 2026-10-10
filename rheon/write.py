@@ -32,7 +32,8 @@ def write_xes(df: pd.DataFrame, output_path: str | Path, metadata: dict[str, Any
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     log = _dataframe_to_log(df, metadata)
-    xes_exporter.apply(log, str(path), variant=xes_exporter.Variants.LINE_BY_LINE)
+    xes_exporter.apply(log, str(path), variant=xes_exporter.Variants.LINE_BY_LINE,
+                       parameters={"show_progress_bar": False})
     return path
 
 

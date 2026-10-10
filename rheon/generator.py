@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -61,7 +61,6 @@ class Case:
     base_starts: list[datetime]  # un-drifted reference timeline used to place drifts
     region: str
     amount: float
-    case_id: str = ""
 
 
 # --- Public entry point ------------------------------------------------------
@@ -78,12 +77,16 @@ def generate_log(
     """Generate a drifted event log and save it as XES or CSV, with a metadata sidecar."""
     if format not in {"xes", "csv"}:
         raise ValueError(f"format must be 'xes' or 'csv', got {format!r}")
+    options = [option.name for option in fields(GeneratorConfig)]
+    unknown = sorted(set(params) - set(options))
+    if unknown:
+        raise ValueError(f"unknown options {unknown}; choose from {options}")
     config = GeneratorConfig(**params)
-    parsed = normalize_drifts(drifts)
+    parsed = normalize_drifts(drifts, config)
     rng = make_rng(config.seed)
 
     output = Path(output_path).with_suffix(f".{format}")
-    name = log_name or Path(output_path).stem
+    name = log_name or output.stem
     dataframe, metadata = _generate(config, parsed, name, rng)
 
     if format == "csv":
@@ -93,7 +96,7 @@ def generate_log(
     write_metadata_file(metadata, output)
 
 
-# --- Orchestration (the six generation steps) -------------------------------
+# --- Orchestration (the five generation steps) ------------------------------
 
 
 def _generate(
@@ -103,33 +106,32 @@ def _generate(
     rng: np.random.Generator,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     """Run the full pipeline and return the finished DataFrame and its metadata."""
+    records: dict[str, dict[str, Any]] = {}
+
     # 1. control flow: build the tree versions and the activity universe
-    versions, pools = _build_versions(config, drifts, rng)
-    activities = sorted({a for tree in versions for a in activities_in_tree(tree)})
+    trees, pools = _build_versions(config, drifts, records, rng)
+    activities = sorted({a for tree in trees for a in activities_in_tree(tree)})
     distributions = _init_distributions(config, activities, rng)
 
-    # 2. case start times along the horizon
-    arrivals, horizon_end = _generate_arrivals(config, drifts_of(drifts, "arrival_rate"), rng)
-    position = _position_fn(config.start_date, horizon_end)
+    # 2. case start times along the horizon (arrival_rate and workload drifts)
+    arrivals = _generate_arrivals(config, drifts, records, rng)
+    position = _position_fn(config.start_date, config.end_date)
 
-    # 3-4. activity sequences, base event times and attribute columns
-    cases = _build_cases(config, drifts, versions, pools, arrivals, distributions, position, rng)
+    # 3. activity sequences, base event times and attribute columns
+    cases = _build_cases(config, drifts, pools, arrivals, distributions, position, rng)
 
-    # 5. apply the remaining drifts (attributes / timing first, workload last)
-    records, state = _apply_drifts(config, cases, drifts, distributions, position, rng)
-    workload_record = _apply_workload(config, cases, drifts, distributions, state, horizon_end, position, rng)
+    # 4. apply the remaining drifts to the cases
+    _apply_drifts(config, cases, drifts, distributions, position, records, rng)
 
-    # 6. materialise the event table and the metadata
+    # 5. materialise the event table and the metadata
     dataframe = _assemble(cases)
     metadata = build_metadata(
         log_name=log_name,
         config=config,
-        horizon_end=horizon_end,
         drifts=drifts,
         distributions=distributions,
+        process_tree=str(trees[0]),
         drift_records=records,
-        workload_record=workload_record,
-        final_state=state,
         dataframe=dataframe,
     )
     return dataframe, metadata
@@ -141,17 +143,20 @@ def _generate(
 def _build_versions(
     config: GeneratorConfig,
     drifts: list[Drift],
+    records: dict[str, dict[str, Any]],
     rng: np.random.Generator,
 ) -> tuple[list, list]:
-    """Build the base tree plus one extra tree per control-flow drift, with a playout pool each."""
-    versions = [build_tree(config.num_activities, config.tree_weights, rng)]
+    """Build the base tree plus one different tree per control-flow drift, with a playout pool each."""
+    trees = [build_tree(config.num_activities, config.tree_weights, rng)]
     for drift in drifts_of(drifts, "control_flow"):
-        num_activities = int(drift.params.get("num_activities", config.num_activities))
+        num_activities = drift.params.get("num_activities", config.num_activities)
         tree_weights = drift.params.get("tree_weights", config.tree_weights)
-        versions.append(build_tree(num_activities, tree_weights, rng))
+        tree = build_tree(num_activities, tree_weights, rng, differ_from=trees[-1])
+        records[drift.name] = {"process_tree_before": str(trees[-1]), "process_tree_after": str(tree)}
+        trees.append(tree)
     pool_size = max(200, config.num_traces)
-    pools = [playout_pool(tree, pool_size, rng) for tree in versions]
-    return versions, pools
+    pools = [playout_pool(tree, pool_size, rng) for tree in trees]
+    return trees, pools
 
 
 def _tree_version_for(
@@ -203,45 +208,77 @@ def _init_distributions(
 
 def _generate_arrivals(
     config: GeneratorConfig,
-    arrival_drifts: list[Drift],
+    drifts: list[Drift],
+    records: dict[str, dict[str, Any]],
     rng: np.random.Generator,
-) -> tuple[list[datetime], datetime]:
-    """Fill the fixed [start_date, end_date] horizon with case starts; the count is approximate."""
+) -> list[datetime]:
+    """Fill the fixed [start_date, end_date] horizon with case starts; the count is approximate.
+
+    arrival_rate drifts move the mean inter-arrival gap; workload drifts scale how many cases
+    arrive per unit of time, so the extra (or missing) cases follow every other drift naturally.
+    """
+    base = config.base_inter_arrival
+    gaps = _levels(
+        drifts_of(drifts, "arrival_rate"), base,
+        lambda drift, level: float(drift.params["inter_arrival"]) if "inter_arrival" in drift.params
+        else level * float(drift.params["factor"]),
+    )
+    loads = _levels(
+        drifts_of(drifts, "workload"), 1.0,
+        lambda drift, level: level * float(drift.params["workload_factor"]),
+    )
+    for drift, before, after in gaps:
+        records[drift.name] = {"inter_arrival_before": round(before, 2), "inter_arrival_after": round(after, 2)}
+    for drift, before, after in loads:
+        records[drift.name] = {"workload_before": round(before, 4), "workload_after": round(after, 4)}
+
     start, end = config.start_date, config.end_date
-    horizon_seconds = max(1.0, (end - start).total_seconds())
-    base_mean = config.base_inter_arrival
-    max_cases = config.num_traces * 5 + 100  # safety cap if a drift makes arrivals very dense
+    horizon_seconds = (end - start).total_seconds()
+    max_cases = 100 * config.num_traces + 1000  # guard against drifts that make arrivals explode
     starts = [start]
     cursor = start
-    while len(starts) < max_cases:
+    while True:
         position_value = (cursor - start).total_seconds() / horizon_seconds
-        mean = _effective_inter_arrival(base_mean, arrival_drifts, position_value)
-        cursor = cursor + timedelta(minutes=float(rng.exponential(max(1e-6, mean))))
+        mean = _level_at(gaps, base, position_value) / _level_at(loads, 1.0, position_value)
+        cursor = cursor + timedelta(minutes=float(rng.exponential(mean)))
         if cursor > end:
-            break
+            return starts
         starts.append(cursor)
-    return starts, end
+        if len(starts) > max_cases:
+            raise ValueError(f"arrival_rate/workload drifts would create more than {max_cases} cases")
 
 
-def _effective_inter_arrival(base: float, arrival_drifts: list[Drift], position_value: float) -> float:
-    """Blend the base inter-arrival mean with any active arrival_rate drift targets."""
-    mean = base
-    for drift in arrival_drifts:
+def _levels(
+    drifts: list[Drift],
+    base: float,
+    target: Callable[[Drift, float], float],
+) -> list[tuple[Drift, float, float]]:
+    """Pair each (chronological) drift with the level it starts from and the level it moves to."""
+    levels: list[tuple[Drift, float, float]] = []
+    level = base
+    for drift in drifts:
+        after = target(drift, level)
+        levels.append((drift, level, after))
+        level = after
+    return levels
+
+
+def _level_at(levels: list[tuple[Drift, float, float]], base: float, position_value: float) -> float:
+    """The level in effect at a horizon position, interpolated inside a gradual window."""
+    value = base
+    for drift, before, after in levels:
         ramp = drift.ramp(position_value)
-        if ramp <= 0.0:
-            continue
-        target = float(drift.params.get("inter_arrival", base * float(drift.params.get("factor", 1.0))))
-        mean = mean * (1.0 - ramp) + target * ramp
-    return mean
+        if ramp > 0.0:
+            value = before + (after - before) * ramp
+    return value
 
 
-# --- Steps 3-4: build cases --------------------------------------------------
+# --- Step 3: build cases -----------------------------------------------------
 
 
 def _build_cases(
     config: GeneratorConfig,
     drifts: list[Drift],
-    versions: list,
     pools: list,
     arrivals: list[datetime],
     dist: Distributions,
@@ -289,7 +326,7 @@ def _base_timeline(start: datetime, gaps: list[float], durations: list[float]) -
     return base_starts
 
 
-# --- Step 5: apply the non-control-flow drifts ------------------------------
+# --- Step 4: apply the attribute, resource and timing drifts ----------------
 
 
 def _apply_drifts(
@@ -298,9 +335,14 @@ def _apply_drifts(
     drifts: list[Drift],
     dist: Distributions,
     position: Any,
+    records: dict[str, dict[str, Any]],
     rng: np.random.Generator,
-) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
-    """Apply attribute and timing drifts in chronological order, recording what each changed."""
+) -> None:
+    """Apply attribute drifts by start fraction, then duration drifts, recording each change.
+
+    Duration drifts run last, so a slowdown stays with its resource even if a later
+    reassignment or pool change moves events to other resources.
+    """
     state = {
         "dominant_resource": dict(dist.dominant_resource),
         "active_resources": list(config.resources),
@@ -308,33 +350,32 @@ def _apply_drifts(
         "dominant_region": dist.dominant_region,
         "amount_mean": dist.amount_mean,
         "amount_var": dist.amount_var,
+        "waiting_mean": dict(dist.waiting_mean),
+        "waiting_var": dist.waiting_var,
     }
     handlers = {
         "reassignment": _apply_reassignment,
         "region": _apply_region,
         "amount": _apply_amount,
         "waiting_time": _apply_waiting_time,
-        "duration": _apply_duration,
         "pool_size": _apply_pool_size,
+        "duration": _apply_duration,
     }
-    records: dict[str, dict[str, Any]] = {}
     ordered = sorted(
         (d for d in drifts if d.type in handlers),
-        key=lambda d: d.start_frac,
+        key=lambda d: (d.type == "duration", d.start_frac),
     )
     for drift in ordered:
         records[drift.name] = handlers[drift.type](config, cases, drift, dist, state, position, rng)
-    return records, state
 
 
 def _apply_reassignment(config, cases, drift, dist, state, position, rng) -> dict[str, Any]:
     """Pick a new dominant resource per activity and re-fill the resource column after the drift."""
     old = dict(state["dominant_resource"])
     active = state["active_resources"]
-    new = {}
-    for activity in dist.activities:
-        choices = [r for r in active if r != old.get(activity)]
-        new[activity] = str(rng.choice(choices)) if choices else old.get(activity, active[0])
+    if len(active) < 2:
+        raise ValueError(f"drift {drift.name} (reassignment): needs at least two active resources")
+    new = {a: str(rng.choice([r for r in active if r != old[a]])) for a in dist.activities}
     for case in cases:
         for index, base_start in enumerate(case.base_starts):
             ramp = drift.ramp(position(base_start))
@@ -347,8 +388,7 @@ def _apply_reassignment(config, cases, drift, dist, state, position, rng) -> dic
 def _apply_region(config, cases, drift, dist, state, position, rng) -> dict[str, Any]:
     """Choose a new dominant region and re-fill the region column for later cases."""
     old = state["dominant_region"]
-    choices = [r for r in config.regions if r != old]
-    new = str(rng.choice(choices)) if choices else old
+    new = str(rng.choice([r for r in config.regions if r != old]))
     for case in cases:
         ramp = drift.ramp(position(case.start))
         if ramp > 0 and (drift.mode == "sudden" or rng.random() < ramp):
@@ -369,33 +409,35 @@ def _apply_amount(config, cases, drift, dist, state, position, rng) -> dict[str,
         case.amount = _positive_normal(old_mean * (1 - ramp) + new_mean * ramp,
                                        old_var * (1 - ramp) + new_var * ramp, rng)
     state["amount_mean"], state["amount_var"] = new_mean, new_var
-    return {"amount_mean_before": old_mean, "amount_mean_after": new_mean,
-            "amount_var_before": old_var, "amount_var_after": new_var}
+    return {"amount_mean_before": round(old_mean, 2), "amount_mean_after": round(new_mean, 2),
+            "amount_var_before": round(old_var, 2), "amount_var_after": round(new_var, 2)}
 
 
 def _apply_waiting_time(config, cases, drift, dist, state, position, rng) -> dict[str, Any]:
-    """Shift the waiting-gap mean for events after the drift (driving throughput time)."""
-    base_mean = float(np.mean(list(dist.waiting_mean.values()))) if dist.waiting_mean else 0.0
-    new_mean = float(drift.params.get("mean", base_mean))
-    new_var = float(drift.params.get("variance", dist.waiting_var))
+    """Re-draw the waiting gaps before later events from a shifted mean/variance (all activities at once)."""
+    old_mean, old_var = state["waiting_mean"], state["waiting_var"]
+    new_mean = {a: float(drift.params.get("mean", old_mean[a])) for a in old_mean}
+    new_var = float(drift.params.get("variance", old_var))
     for case in cases:
         for index in range(1, len(case.activities)):
             ramp = drift.ramp(position(case.base_starts[index]))
             if ramp <= 0:
                 continue
-            new_gap = _positive_normal(new_mean, new_var, rng)
-            case.gaps[index] = case.gaps[index] * (1 - ramp) + new_gap * ramp
+            activity = case.activities[index]
+            case.gaps[index] = _positive_normal(old_mean[activity] * (1 - ramp) + new_mean[activity] * ramp,
+                                                old_var * (1 - ramp) + new_var * ramp, rng)
+    state["waiting_mean"], state["waiting_var"] = new_mean, new_var
     return {
-        "waiting_mean_before": round(base_mean, 2),
-        "waiting_mean_after": round(new_mean, 2),
-        "waiting_var_before": round(dist.waiting_var, 2),
+        "waiting_mean_before": round(float(np.mean(list(old_mean.values()))), 2),
+        "waiting_mean_after": round(float(np.mean(list(new_mean.values()))), 2),
+        "waiting_var_before": round(old_var, 2),
         "waiting_var_after": round(new_var, 2),
     }
 
 
 def _apply_duration(config, cases, drift, dist, state, position, rng) -> dict[str, Any]:
     """Scale the processing time of the given resources' events after the drift."""
-    affected = _resolve_resources(drift.params.get("resources", "all"), state["all_resources"])
+    affected = _resolve_resources(drift, state["all_resources"])
     factor = float(drift.params.get("factor", 1.5))
     for case in cases:
         for index, base_start in enumerate(case.base_starts):
@@ -408,31 +450,29 @@ def _apply_duration(config, cases, drift, dist, state, position, rng) -> dict[st
 
 
 def _apply_pool_size(config, cases, drift, dist, state, position, rng) -> dict[str, Any]:
-    """Grow or shrink the resource pool and scale durations the opposite way."""
+    """Grow or shrink the pool; scale durations by the reciprocal or direct duration factor."""
     delta = int(drift.params.get("delta", -2))
     duration_factor = float(drift.params.get("duration_factor", 1.2))
-    active = state["active_resources"]
-    dominant = state["dominant_resource"]
-    old_size = len(active)
+    old_size = len(state["active_resources"])
 
     if delta < 0:
-        record = _shrink_pool(cases, drift, dist, active, dominant, -delta, duration_factor, position, rng)
-    elif delta > 0:
-        record = _grow_pool(cases, drift, dist, state, delta, duration_factor, position, rng)
+        record = _shrink_pool(cases, drift, dist, state, -delta, duration_factor, position, rng)
     else:
-        record = {}
-    record.update({"old_pool_size": old_size, "new_pool_size": len(state["active_resources"])})
-    return record
+        record = _grow_pool(cases, drift, dist, state, delta, duration_factor, position, rng)
+    return {"pool_size_before": old_size, "pool_size_after": len(state["active_resources"]), **record}
 
 
-def _shrink_pool(cases, drift, dist, active, dominant, count, duration_factor, position, rng) -> dict[str, Any]:
-    """Remove resources, spread their events onto the rest, and lengthen durations."""
-    count = min(count, len(active) - 1)
-    removed = {str(r) for r in rng.choice(active, size=count, replace=False)} if count > 0 else set()
+def _shrink_pool(cases, drift, dist, state, count, duration_factor, position, rng) -> dict[str, Any]:
+    """Remove resources, move their events to the new dominants, and multiply durations by the factor."""
+    active = state["active_resources"]
+    dominant = state["dominant_resource"]
+    if count >= len(active):
+        raise ValueError(f"drift {drift.name} (pool_size): cannot remove {count} of the {len(active)} active resources")
+    removed = {str(r) for r in rng.choice(active, size=count, replace=False)}
     remaining = [r for r in active if r not in removed]
     reassigned: dict[str, str] = {}
     for activity in dist.activities:
-        if dominant.get(activity) in removed:
+        if dominant[activity] in removed:
             dominant[activity] = str(rng.choice(remaining))
             reassigned[activity] = dominant[activity]
     for case in cases:
@@ -442,7 +482,7 @@ def _shrink_pool(cases, drift, dist, active, dominant, count, duration_factor, p
                 continue
             case.durations[index] *= (1 - ramp) + duration_factor * ramp
             if case.resources[index] in removed and (drift.mode == "sudden" or rng.random() < ramp):
-                case.resources[index] = str(rng.choice(remaining))
+                case.resources[index] = _draw_dominant(dominant[case.activities[index]], remaining, rng)
     active[:] = remaining
     return {
         "removed_resources": sorted(removed),
@@ -452,7 +492,7 @@ def _shrink_pool(cases, drift, dist, active, dominant, count, duration_factor, p
 
 
 def _grow_pool(cases, drift, dist, state, count, duration_factor, position, rng) -> dict[str, Any]:
-    """Add resources, make each dominate a free activity, and shorten durations."""
+    """Add resources, claim distinct activities while available, and apply reciprocal duration scaling."""
     active = state["active_resources"]
     dominant = state["dominant_resource"]
     added: list[str] = []
@@ -484,91 +524,7 @@ def _grow_pool(cases, drift, dist, state, count, duration_factor, position, rng)
     return {"added_resources": added, "claimed_activities": claimed, "duration_factor": duration_factor}
 
 
-# --- Step 5b: workload (runs last) ------------------------------------------
-
-
-def _apply_workload(
-    config: GeneratorConfig,
-    cases: list[Case],
-    drifts: list[Drift],
-    dist: Distributions,
-    state: dict[str, Any],
-    horizon_end: datetime,
-    position: Any,
-    rng: np.random.Generator,
-) -> dict[str, Any] | None:
-    """Add duplicate traces (or remove some) after the drift to change per-resource case load."""
-    workload = drifts_of(drifts, "workload")
-    if not workload:
-        return None
-    drift = workload[0]
-    factor = float(drift.params.get("workload_factor", 1.0))
-    affected = [c for c in cases if position(c.start) >= drift.start_frac]
-    change = int(round(len(affected) * (factor - 1.0)))
-
-    if change > 0:
-        horizon = (horizon_end - config.start_date).total_seconds()
-        window_start = config.start_date + timedelta(seconds=horizon * drift.start_frac)
-        added = _duplicate_cases(config, cases, affected, change, dist, state, window_start, horizon_end, rng)
-        return {"workload_factor": factor, "added_traces": added, "removed_traces": 0}
-    if change < 0:
-        removed = _remove_cases(cases, affected, -change, rng)
-        return {"workload_factor": factor, "added_traces": 0, "removed_traces": removed}
-    return {"workload_factor": factor, "added_traces": 0, "removed_traces": 0}
-
-
-def _duplicate_cases(config, cases, affected, count, dist, state, window_start, window_end, rng) -> int:
-    """Clone random affected cases with freshly drawn timing, amount, resources and region."""
-    dominant = state["dominant_resource"]
-    active = state["active_resources"]
-    span = max(1.0, (window_end - window_start).total_seconds())
-    for _ in range(count):
-        source = affected[int(rng.integers(0, len(affected)))]
-        activities = list(source.activities)
-        gaps = [0.0]
-        durations = [_positive_normal(dist.duration_mean[activities[0]], dist.duration_var, rng)]
-        for activity in activities[1:]:
-            gaps.append(_positive_normal(dist.waiting_mean[activity], dist.waiting_var, rng))
-            durations.append(_positive_normal(dist.duration_mean[activity], dist.duration_var, rng))
-        start = window_start + timedelta(seconds=float(rng.uniform(0, span)))
-        cases.append(
-            Case(
-                start=start,
-                activities=activities,
-                gaps=gaps,
-                durations=durations,
-                resources=[_draw_dominant(dominant.get(a, active[0]), active, rng) for a in activities],
-                base_starts=_base_timeline(start, gaps, durations),
-                region=_draw_dominant(state["dominant_region"], config.regions, rng),
-                amount=_positive_normal(state["amount_mean"], state["amount_var"], rng),
-            )
-        )
-    return count
-
-
-def _remove_cases(cases, affected, count, rng) -> int:
-    """Delete random affected cases, but never the last instance of a trace variant."""
-    variant_counts: dict[tuple[str, ...], int] = {}
-    for case in cases:
-        variant_counts[tuple(case.activities)] = variant_counts.get(tuple(case.activities), 0) + 1
-    order = list(affected)
-    rng.shuffle(order)
-    removed = 0
-    to_drop = set()
-    for case in order:
-        if removed >= count:
-            break
-        variant = tuple(case.activities)
-        if variant_counts[variant] <= 1:
-            continue
-        variant_counts[variant] -= 1
-        to_drop.add(id(case))
-        removed += 1
-    cases[:] = [c for c in cases if id(c) not in to_drop]
-    return removed
-
-
-# --- Step 6: assemble the DataFrame -----------------------------------------
+# --- Step 5: assemble the DataFrame -----------------------------------------
 
 
 def _assemble(cases: list[Case]) -> pd.DataFrame:
@@ -596,11 +552,10 @@ def _assemble(cases: list[Case]) -> pd.DataFrame:
             )
             cursor = end
 
-    if not rows:
-        return pd.DataFrame(columns=SCHEMA_COLUMNS)
     df = pd.DataFrame(rows, columns=SCHEMA_COLUMNS)
-    df[START_TIMESTAMP_KEY] = pd.to_datetime(df[START_TIMESTAMP_KEY], utc=True)
-    df[TIMESTAMP_KEY] = pd.to_datetime(df[TIMESTAMP_KEY], utc=True)
+    # whole seconds give every timestamp the same format; rounding is monotonic, so order is kept
+    df[START_TIMESTAMP_KEY] = pd.to_datetime(df[START_TIMESTAMP_KEY], utc=True).dt.round("s")
+    df[TIMESTAMP_KEY] = pd.to_datetime(df[TIMESTAMP_KEY], utc=True).dt.round("s")
     df = df.sort_values([CASE_ID_KEY, START_TIMESTAMP_KEY]).reset_index(drop=True)
     df[DURATION_KEY] = (df[TIMESTAMP_KEY] - df[START_TIMESTAMP_KEY]).dt.total_seconds() / 60.0
     df[EVENT_ID_KEY] = [f"evt_{idx:08d}" for idx in range(1, len(df) + 1)]
@@ -610,9 +565,9 @@ def _assemble(cases: list[Case]) -> pd.DataFrame:
 # --- Small helpers -----------------------------------------------------------
 
 
-def _position_fn(start_date: datetime, horizon_end: datetime):
+def _position_fn(start_date: datetime, end_date: datetime):
     """Return a function mapping a timestamp to its [0, 1] position in the horizon."""
-    span = max(1.0, (horizon_end - start_date).total_seconds())
+    span = (end_date - start_date).total_seconds()
 
     def position(timestamp: datetime) -> float:
         return min(1.0, max(0.0, (timestamp - start_date).total_seconds() / span))
@@ -621,7 +576,7 @@ def _position_fn(start_date: datetime, horizon_end: datetime):
 
 
 def _positive_normal(mean: float, var: float, rng: np.random.Generator) -> float:
-    """Draw a strictly positive value from a normal distribution."""
+    """Draw a strictly positive value (at least 0.1) from a normal distribution."""
     return max(0.1, float(rng.normal(mean, np.sqrt(max(0.0, var)))))
 
 
@@ -632,10 +587,16 @@ def _draw_dominant(dominant: str, pool: list[str], rng: np.random.Generator) -> 
     return str(rng.choice(pool))
 
 
-def _resolve_resources(spec: Any, all_resources: list[str]) -> set[str]:
-    """Interpret a drift's `resources` spec: 'all', an int count, or an explicit list."""
-    if spec == "all" or spec is None:
+def _resolve_resources(drift: Drift, all_resources: list[str]) -> set[str]:
+    """Interpret a duration drift's `resources`: 'all', a count of the first resources, or a list of names."""
+    spec = drift.params.get("resources", "all")
+    if spec == "all":
         return set(all_resources)
-    if isinstance(spec, int):
-        return set(all_resources[: max(0, spec)])
-    return {str(item) for item in spec}
+    if isinstance(spec, (list, tuple)):
+        unknown = sorted(set(spec) - set(all_resources))
+        if unknown:
+            raise ValueError(f"drift {drift.name} (duration): unknown resources {unknown}; the pool is {all_resources}")
+        return set(spec)
+    if spec > len(all_resources):
+        raise ValueError(f"drift {drift.name} (duration): resources={spec} but the pool only has {len(all_resources)}")
+    return set(all_resources[:spec])

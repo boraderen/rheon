@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from typing import Any
 
 import pandas as pd
@@ -16,22 +15,20 @@ def build_metadata(
     *,
     log_name: str,
     config: GeneratorConfig,
-    horizon_end: datetime,
     drifts: list[Drift],
     distributions,
+    process_tree: str,
     drift_records: dict[str, dict[str, Any]],
-    workload_record: dict[str, Any] | None,
-    final_state: dict[str, Any],
     dataframe: pd.DataFrame,
 ) -> dict[str, Any]:
     """Collect the base distributions and each drift's changes into one ground-truth payload."""
     parameters = config.to_dict()
-    parameters["end_date"] = horizon_end.isoformat()
-    parameters["generated_traces"] = int(dataframe[CASE_ID_KEY].nunique()) if not dataframe.empty else 0
+    parameters["generated_traces"] = int(dataframe[CASE_ID_KEY].nunique())
     parameters["generated_events"] = int(len(dataframe))
     parameters["num_trace_variants"] = _trace_variant_count(dataframe)
 
     base = {
+        "process_tree": process_tree,
         "activities": [
             {
                 "activity": activity,
@@ -56,9 +53,9 @@ def build_metadata(
             "type": drift.type,
             "perspective": DRIFT_TYPES[drift.type],
             "mode": drift.mode,
-            **drift.window_dates(config.start_date, horizon_end),
+            **drift.window_dates(config.start_date, config.end_date),
             "params": drift.params,
-            "changes": _change_record(drift, config, drift_records, workload_record),
+            "changes": drift_records[drift.name],
         }
         for drift in drifts
     ]
@@ -66,30 +63,10 @@ def build_metadata(
     return {"log_name": log_name, "parameters": parameters, "base": base, "drifts": drift_entries}
 
 
-def _change_record(
-    drift: Drift,
-    config: GeneratorConfig,
-    drift_records: dict[str, dict[str, Any]],
-    workload_record: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """Return the recorded change for a drift, synthesising it for drifts applied outside the engine."""
-    if drift.type == "workload":
-        return workload_record or {}
-    if drift.type == "arrival_rate":
-        base = config.base_inter_arrival
-        after = float(drift.params.get("inter_arrival", base * float(drift.params.get("factor", 1.0))))
-        return {"inter_arrival_before": round(base, 2), "inter_arrival_after": round(after, 2)}
-    if drift.type == "control_flow":
-        return {
-            "num_activities": int(drift.params.get("num_activities", config.num_activities)),
-            "tree_weights": dict(drift.params.get("tree_weights", config.tree_weights)),
-        }
-    return drift_records.get(drift.name, {})
-
-
 def compact_json(payload: dict[str, Any]) -> str:
     """Compact JSON string of the payload, for embedding inside the XES log attributes."""
-    return json.dumps(payload, separators=(",", ":"), sort_keys=True)
+    # numpy scalars (e.g. a user-supplied np.int64) are written as plain numbers
+    return json.dumps(payload, separators=(",", ":"), sort_keys=True, default=lambda value: value.item())
 
 
 # --- Markdown rendering ------------------------------------------------------
@@ -101,7 +78,7 @@ def render_markdown(payload: dict[str, Any]) -> str:
     lines += _table(["Parameter", "Value"], [[key, _fmt(value)] for key, value in payload["parameters"].items()])
 
     base = payload["base"]
-    lines += ["", "## Base distributions", "", "### Activities", ""]
+    lines += ["", "## Base distributions", "", f"Process tree: `{base['process_tree']}`", "", "### Activities", ""]
     lines += _table(
         ["Activity", "Dominant resource", "Duration mean", "Duration var", "Waiting mean", "Waiting var"],
         [
@@ -132,9 +109,9 @@ def _drift_section(drift: dict[str, Any]) -> list[str]:
     if drift["mode"] == "sudden":
         lines.append(f"- Drift point: {drift['drift_point']:.3f} ({drift['drift_point_date']})")
     else:
-        lines.append(f"- Drift window: {drift['drift_start']:.3f} → {drift['drift_end']:.3f}")
-        lines.append(f"  ({drift['drift_start_date']} → {drift['drift_end_date']})")
-    lines += _changes_lines(drift["type"], drift.get("changes") or {})
+        lines.append(f"- Drift window: {drift['start_point']:.3f} → {drift['end_point']:.3f}")
+        lines.append(f"  ({drift['start_point_date']} → {drift['end_point_date']})")
+    lines += _changes_lines(drift["type"], drift["changes"])
     lines.append("")
     return lines
 
@@ -142,8 +119,8 @@ def _drift_section(drift: dict[str, Any]) -> list[str]:
 def _changes_lines(drift_type: str, changes: dict[str, Any]) -> list[str]:
     """Render the type-specific changed distributions/assignments for one drift."""
     if drift_type == "control_flow":
-        return [f"- New process tree: num_activities={changes.get('num_activities')}, "
-                f"weights {_fmt(changes.get('tree_weights', {}))}"]
+        return [f"- Process tree before: `{changes['process_tree_before']}`",
+                f"- Process tree after: `{changes['process_tree_after']}`"]
 
     if drift_type == "reassignment":
         before, after = changes.get("dominant_before", {}), changes.get("dominant_after", {})
@@ -151,7 +128,7 @@ def _changes_lines(drift_type: str, changes: dict[str, Any]) -> list[str]:
         return lines + _indent(_assignment_table(before, after))
 
     if drift_type == "pool_size":
-        lines = [f"- Pool size: {changes.get('old_pool_size')} → {changes.get('new_pool_size')}"]
+        lines = [f"- Pool size: {changes.get('pool_size_before')} → {changes.get('pool_size_after')}"]
         if changes.get("removed_resources"):
             lines.append(f"- Removed resources: {_fmt(changes['removed_resources'])}")
             if changes.get("reassigned_dominants"):
@@ -164,7 +141,9 @@ def _changes_lines(drift_type: str, changes: dict[str, Any]) -> list[str]:
                 lines += _indent(_map_table(changes["claimed_activities"]))
         factor = changes.get("duration_factor")
         if factor is not None:
-            lines.append(f"- Duration scaling factor: {_fmt(factor)} (fewer resources → slower, more → faster)")
+            multiplier = factor if changes.get("removed_resources") else 1.0 / factor
+            lines.append(f"- Event-duration multiplier: {_fmt(multiplier)} "
+                         f"(duration_factor={_fmt(factor)}; shrink × factor, grow × reciprocal)")
         return lines
 
     if drift_type == "duration":
@@ -172,7 +151,7 @@ def _changes_lines(drift_type: str, changes: dict[str, Any]) -> list[str]:
                 f"- Processing time multiplied by {_fmt(changes.get('factor'))}"]
 
     if drift_type == "waiting_time":
-        return [f"- Waiting-gap mean: {_fmt(changes.get('waiting_mean_before'))} → {_fmt(changes.get('waiting_mean_after'))}",
+        return [f"- Waiting-gap mean (average over activities): {_fmt(changes.get('waiting_mean_before'))} → {_fmt(changes.get('waiting_mean_after'))}",
                 f"- Waiting-gap variance: {_fmt(changes.get('waiting_var_before'))} → {_fmt(changes.get('waiting_var_after'))}"]
 
     if drift_type == "amount":
@@ -187,8 +166,8 @@ def _changes_lines(drift_type: str, changes: dict[str, Any]) -> list[str]:
         return [f"- Dominant region: {changes.get('dominant_region_before')} → {changes.get('dominant_region_after')}"]
 
     if drift_type == "workload":
-        return [f"- Workload factor: {_fmt(changes.get('workload_factor'))}",
-                f"- Traces added: {changes.get('added_traces', 0)}, removed: {changes.get('removed_traces', 0)}"]
+        return [f"- Case volume (× base): {_fmt(changes.get('workload_before'))} → "
+                f"{_fmt(changes.get('workload_after'))}"]
 
     return []
 
@@ -233,8 +212,6 @@ def _fmt(value: Any) -> str:
 
 def _trace_variant_count(df: pd.DataFrame) -> int:
     """Number of distinct activity sequences in the log."""
-    if df.empty:
-        return 0
     variants = {
         tuple(group.sort_values(START_TIMESTAMP_KEY)[ACTIVITY_KEY].astype(str))
         for _, group in df.groupby(CASE_ID_KEY, sort=False)

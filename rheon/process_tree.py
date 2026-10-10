@@ -11,7 +11,7 @@ from pm4py.algo.simulation.playout.process_tree import algorithm as playout_alg
 from pm4py.algo.simulation.tree_generator import algorithm as tree_gen
 from pm4py.objects.process_tree.obj import ProcessTree
 
-from rheon.config import activity_labels
+from rheon.config import TREE_OPERATORS, activity_labels
 
 
 @contextlib.contextmanager
@@ -37,25 +37,32 @@ def build_tree(
     num_activities: int,
     tree_weights: dict[str, float],
     rng: np.random.Generator,
+    differ_from: ProcessTree | None = None,
 ) -> ProcessTree:
-    """Generate a process tree with the given number of activities and operator weights."""
+    """Generate a process tree with the given number of activities and operator weights.
+
+    Operators missing from `tree_weights` get weight 0. With `differ_from`, the tree is
+    re-drawn until it differs from that tree, so a control-flow drift always changes the model.
+    """
     params = {
         "min": num_activities,
         "max": num_activities,
         "mode": num_activities,
-        "sequence": float(tree_weights.get("sequence", 0.6)),
-        "choice": float(tree_weights.get("choice", 0.25)),
-        "parallel": float(tree_weights.get("parallel", 0.1)),
-        "loop": float(tree_weights.get("loop", 0.05)),
+        **{operator: float(tree_weights.get(operator, 0.0)) for operator in TREE_OPERATORS},
         "or": 0.0,
         "silent": 0.0,
         "duplicate": 0.0,
         "no_models": 1,
     }
-    with _pm4py_seed(_next_seed(rng)):
-        tree = tree_gen.apply(parameters=params)
-    _relabel(tree)
-    return tree
+    for _ in range(100):
+        with _pm4py_seed(_next_seed(rng)):
+            tree = tree_gen.apply(parameters=dict(params))
+        _relabel(tree)
+        if differ_from is None or str(tree) != str(differ_from):
+            return tree
+    raise ValueError(
+        f"could not build a process tree with {num_activities} activities that differs from the previous one"
+    )
 
 
 def _relabel(tree: ProcessTree) -> None:

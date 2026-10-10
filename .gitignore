@@ -13,6 +13,7 @@ dist/
 # Generated logs
 /data/
 /example/*.csv
+/example/*.xes
 /example/*_meta.md
 
 # Local generated docs

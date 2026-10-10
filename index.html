@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rheon documentation</title>
-  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="icon" type="image/png" href="rheon.png">
   <meta name="theme-color" content="#f5f8ff">
   <style>
     :root {
@@ -111,7 +111,7 @@
       line-height: 1.4;
     }
 
-    .nav-item:hover { background: var(--soft); }
+    .nav-item:hover { background: var(--soft); text-decoration: none; }
 
     .nav-item.active {
       background: var(--accent);
@@ -286,6 +286,7 @@
     .card:hover {
       background: var(--card-hover);
       border-color: #c8cad0;
+      text-decoration: none;
     }
 
     .card-icon {
@@ -360,26 +361,27 @@
 
   <!-- Sidebar -->
   <aside class="sidebar">
-    <a class="nav-item active" data-target="welcome">Welcome</a>
-    <a class="nav-item" data-target="installation">Installation</a>
-    <a class="nav-item" data-target="quick-start">Quick start</a>
-    <a class="nav-item" data-target="package-structure">Package structure</a>
-    <a class="nav-item" data-target="api">API</a>
-    <a class="nav-item" data-target="drift-modes">Drift modes</a>
-    <a class="nav-item" data-target="drift-types">Drift types</a>
-    <a class="nav-item" data-target="output">Output &amp; metadata</a>
+    <a class="nav-item" href="#welcome">Welcome</a>
+    <a class="nav-item" href="#installation">Installation</a>
+    <a class="nav-item" href="#quick-start">Quick start</a>
+    <a class="nav-item" href="#package-structure">Package structure</a>
+    <a class="nav-item" href="#api">API</a>
+    <a class="nav-item" href="#generation-workflow">Generation workflow</a>
+    <a class="nav-item" href="#drift-modes">Drift modes</a>
+    <a class="nav-item" href="#drift-types">Drift types</a>
+    <a class="nav-item" href="#output">Output &amp; metadata</a>
   </aside>
 
   <!-- Main content -->
   <main>
 
     <!-- Welcome -->
-    <section class="page active" id="welcome">
+    <section class="page" id="welcome">
       <h1>Rheon</h1>
       <p class="subtitle">A library for synthetic event log generation with injected concept drifts.</p>
 
       <div class="card-grid">
-        <a class="card" data-target="installation">
+        <a class="card" href="#installation">
           <div class="card-icon">
             <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -390,7 +392,7 @@
           <h3>Installation</h3>
         </a>
 
-        <a class="card" data-target="quick-start">
+        <a class="card" href="#quick-start">
           <div class="card-icon">
             <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -403,7 +405,7 @@
           <h3>Quick start</h3>
         </a>
 
-        <a class="card" data-target="package-structure">
+        <a class="card" href="#package-structure">
           <div class="card-icon">
             <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -417,7 +419,7 @@
           <h3>Package structure</h3>
         </a>
 
-        <a class="card" data-target="api">
+        <a class="card" href="#api">
           <div class="card-icon">
             <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
                  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -433,27 +435,43 @@
       <h2>Concepts</h2>
 
       <div class="card-grid">
-        <a class="card" data-target="drift-modes">
+        <a class="card" href="#drift-modes">
           <h3>Drift modes</h3>
-          <p>Two modes: <code>sudden</code> and <code>gradual</code>.</p>
+          <p><code>sudden</code> or <code>gradual</code>.</p>
         </a>
-        <a class="card" data-target="drift-types">
+        <a class="card" href="#drift-types">
           <h3>Drift types</h3>
-          <p>Nine types across the intra-case, resource, and inter-case perspectives.</p>
+          <p>Nine types across the intra-case, resource and inter-case perspectives.</p>
         </a>
-        <a class="card" data-target="output">
+        <a class="card" href="#output">
           <h3>Output &amp; metadata</h3>
-          <p>The XES or CSV log plus the metadata.</p>
+          <p>The XES or CSV log plus its ground-truth metadata.</p>
         </a>
       </div>
+    </section>
+
+    <!-- Installation -->
+    <section class="page" id="installation">
+      <h1>Installation</h1>
+      <p class="subtitle">Requires Python 3.10+ and <a href="https://docs.astral.sh/uv/" target="_blank" rel="noopener">uv</a>.</p>
+
+      <pre><code>git clone git@github.com:boraderen/rheon.git
+cd rheon
+uv sync</code></pre>
+
+      <p>Generate an example log with one drift per perspective
+        (<code>example/example.csv</code> and <code>example/example_meta.md</code>):</p>
+      <pre><code>uv run python example/generate_log.py</code></pre>
+
+      <p>Run the tests:</p>
+      <pre><code>uv run pytest</code></pre>
     </section>
 
     <!-- Quick start -->
     <section class="page" id="quick-start">
       <h1>Quick start</h1>
-      <p class="subtitle">Generate a labeled log with the simple API.</p>
+      <p class="subtitle">Describe the drifts, then write a labeled log.</p>
 
-      <p>Describe a base process and a list of drifts, then write a labeled log.</p>
       <pre><code>import rheon
 
 drifts = [
@@ -464,106 +482,38 @@ drifts = [
 
 rheon.generate_log(drifts, "out/example.xes", num_traces=2000, num_activities=8)</code></pre>
 
-      <p>This writes two files: the log <code>out/example.xes</code> and a ground-truth metadata
-        sidecar <code>out/example_meta.md</code>.</p>
-
-      <p>Read the generated log back with pm4py:</p>
+      <p>This writes the log <code>out/example.xes</code> and its ground truth
+        <code>out/example_meta.md</code>. Read the log with pm4py:</p>
       <pre><code>import pm4py
 
 log = pm4py.read_xes("out/example.xes")</code></pre>
     </section>
 
-    <!-- Installation -->
-    <section class="page" id="installation">
-      <h1>Installation</h1>
-      <p class="subtitle">Get the runtime and dependencies in place.</p>
-
-      <h3>Prerequisites</h3>
-      <ul>
-        <li>Python 3.10 or newer</li>
-        <li><a href="https://docs.astral.sh/uv/" target="_blank" rel="noopener">uv</a> package manager</li>
-      </ul>
-
-      <h3>Set up</h3>
-      <p>Clone the repository and let <code>uv</code> resolve dependencies on first run:</p>
-      <pre><code>git clone git@github.com:boraderen/rheon.git
-cd rheon
-uv sync</code></pre>
-
-      <h3>Example</h3>
-      <p>Run the bundled script to generate a labeled log:</p>
-      <pre><code>uv run python example/generate_log.py</code></pre>
-      <p>It injects drifts across every perspective and writes <code>example/example.csv</code> plus
-        its <code>example_meta.md</code> ground-truth sidecar.</p>
-    </section>
-
     <!-- Package structure -->
     <section class="page" id="package-structure">
       <h1>Package structure</h1>
-      <p class="subtitle">How the public API and implementation are split.</p>
-
-      <p>The package exposes a single function, <code>rheon.generate_log</code>, from
-        <code>rheon/__init__.py</code>. The implementation is just seven small modules.</p>
+      <p class="subtitle">One public function, <code>rheon.generate_log</code>, on top of six modules.</p>
 
       <pre><code>rheon/
-  __init__.py      public exports
-  config.py        column keys, labels, GeneratorConfig
-  drifts.py        drift spec, validation, timeline helpers
-  process_tree.py  build trees and play out activity sequences
-  generator.py     the generation engine (the six steps)
+  __init__.py      exports generate_log
+  config.py        column keys, labels, parameter validation
+  drifts.py        drift validation and timeline helpers
+  process_tree.py  build process trees and play out traces
+  generator.py     the generation engine and generate_log
   metadata.py      build and render the ground-truth metadata
   write.py         write XES / CSV and the metadata sidecar
 example/
-  generate_log.py  one mixed-drift example
-tests/
-  test_*.py        behavior coverage</code></pre>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Path</th>
-            <th>Role</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td><code>rheon/config.py</code></td><td>Column names, label helpers, and the parameter bundle.</td></tr>
-          <tr><td><code>rheon/drifts.py</code></td><td>Normalizes and validates the drift list.</td></tr>
-          <tr><td><code>rheon/process_tree.py</code></td><td>Builds process trees and plays out traces.</td></tr>
-          <tr><td><code>rheon/generator.py</code></td><td>The generation engine and the public <code>generate_log</code>.</td></tr>
-          <tr><td><code>rheon/metadata.py</code></td><td>Assembles and renders the ground-truth metadata.</td></tr>
-          <tr><td><code>rheon/write.py</code></td><td>Writes the log (XES or CSV) and the metadata sidecar.</td></tr>
-        </tbody>
-      </table>
+  generate_log.py  one drift per perspective
+tests/             pytest suite</code></pre>
     </section>
 
     <!-- API -->
     <section class="page" id="api">
       <h1>API</h1>
-      <p class="subtitle">Function signature and generator options for <code>rheon.generate_log()</code>.</p>
+      <p class="subtitle"><code>rheon.generate_log(drifts, output_path, **options)</code></p>
 
-      <h3>Signature</h3>
-      <pre><code>rheon.generate_log(
-    drifts,
-    output_path,
-    *,
-    log_name=None,
-    format="xes",          # "xes" or "csv"
-    num_traces=1000,
-    num_activities=10,
-    num_resources=8,
-    num_regions=4,
-    tree_weights={"sequence": 0.6, "choice": 0.25, "parallel": 0.1, "loop": 0.05},
-    start_date=datetime(2020, 1, 1),
-    end_date=datetime(2020, 12, 31),
-    activity_duration=(30.0, 100.0),
-    waiting_time=(15.0, 50.0),
-    amount=(1000.0, 40000.0),
-    seed=42,
-)</code></pre>
-
-      <p><code>drifts</code> is a list of dictionaries, each with a <code>type</code>, a <code>mode</code>, and a
-        position; see <a href="#drift-types">Drift types</a> and <a href="#drift-modes">Drift modes</a>. The
-        parameters below all describe the single base process.</p>
+      <p>Writes the log and its metadata sidecar and returns <code>None</code>. Invalid options or
+        drifts raise a <code>ValueError</code> before anything is written.</p>
 
       <table>
         <thead>
@@ -574,27 +524,67 @@ tests/
           </tr>
         </thead>
         <tbody>
-          <tr><td><code>drifts</code></td><td>—</td><td>List of drift dictionaries to inject.</td></tr>
-          <tr><td><code>output_path</code></td><td>—</td><td>Destination of the log.</td></tr>
-          <tr><td><code>log_name</code></td><td>file stem</td><td>Name used in metadata and the sidecar filename.</td></tr>
+          <tr><td><code>drifts</code></td><td>—</td><td>List of drift dicts; see <a href="#drift-types">Drift types</a>.</td></tr>
+          <tr><td><code>output_path</code></td><td>—</td><td>Path of the log; its suffix is set by <code>format</code>.</td></tr>
+          <tr><td><code>log_name</code></td><td>file stem</td><td>Name used in the metadata and the sidecar filename.</td></tr>
           <tr><td><code>format</code></td><td><code>"xes"</code></td><td><code>"xes"</code> or <code>"csv"</code>.</td></tr>
-          <tr><td><code>num_traces</code></td><td><code>1000</code></td><td>Approximate number of cases (not strict).</td></tr>
+          <tr><td><code>num_traces</code></td><td><code>1000</code></td><td>Target number of cases (approximate).</td></tr>
           <tr><td><code>num_activities</code></td><td><code>10</code></td><td>Activities in the base process tree.</td></tr>
-          <tr><td><code>num_resources</code></td><td><code>8</code></td><td>Size of the resource pool.</td></tr>
-          <tr><td><code>num_regions</code></td><td><code>4</code></td><td>Number of regions.</td></tr>
-          <tr><td><code>tree_weights</code></td><td>see above</td><td>Operator weights for the base tree (<code>sequence</code>, <code>choice</code>, <code>parallel</code>, <code>loop</code>).</td></tr>
-          <tr><td><code>start_date</code></td><td><code>2020-01-01</code></td><td>Start of the time horizon.</td></tr>
-          <tr><td><code>end_date</code></td><td><code>2020-12-31</code></td><td>End of the time horizon (with <code>start_date</code> it fixes the window).</td></tr>
-          <tr><td><code>activity_duration</code></td><td><code>(30.0, 100.0)</code></td><td><code>(mean, variance)</code> of activity processing time in minutes.</td></tr>
-          <tr><td><code>waiting_time</code></td><td><code>(15.0, 50.0)</code></td><td><code>(mean, variance)</code> of the waiting gap between events.</td></tr>
+          <tr><td><code>num_resources</code></td><td><code>8</code></td><td>Resource pool <code>res_01</code>, <code>res_02</code>, …</td></tr>
+          <tr><td><code>num_regions</code></td><td><code>4</code></td><td>Regions <code>region_1</code>, <code>region_2</code>, …</td></tr>
+          <tr><td><code>tree_weights</code></td><td><code>{"sequence": 0.6, "choice": 0.25, "parallel": 0.1, "loop": 0.05}</code></td><td>Relative operator weights of the base tree; missing operators get 0.</td></tr>
+          <tr><td><code>start_date</code></td><td>2020-01-01 UTC</td><td>Start of the time horizon; naive datetimes are read as UTC.</td></tr>
+          <tr><td><code>end_date</code></td><td>2020-12-31 UTC</td><td>End of the time horizon.</td></tr>
+          <tr><td><code>activity_duration</code></td><td><code>(30.0, 100.0)</code></td><td><code>(mean, variance)</code> of processing time in minutes; each activity's mean is drawn within ±40% of <code>mean</code>.</td></tr>
+          <tr><td><code>waiting_time</code></td><td><code>(15.0, 50.0)</code></td><td><code>(mean, variance)</code> of the waiting gap before an event in minutes; per-activity means as above.</td></tr>
           <tr><td><code>amount</code></td><td><code>(1000.0, 40000.0)</code></td><td><code>(mean, variance)</code> of the case amount.</td></tr>
-          <tr><td><code>seed</code></td><td><code>42</code></td><td>Random seed.</td></tr>
+          <tr><td><code>seed</code></td><td><code>42</code></td><td>Random seed; the same inputs give the same log, except that the PM4Py play-out may interleave parallel branches differently between runs.</td></tr>
         </tbody>
       </table>
 
-      <p>Cases are spread across <code>[start_date, end_date]</code>. The mean inter-arrival gap is
-        derived as <code>(end_date − start_date) / num_traces</code>. The <code>arrival_rate</code> drift changes that derived
-        rate after its drift point.</p>
+      <p>Cases start across <code>[start_date, end_date]</code> with a mean gap of
+        <code>(end_date − start_date) / num_traces</code> before arrival-rate or workload changes.
+        The first case starts exactly at <code>start_date</code>. The horizon bounds case arrivals;
+        event completions can extend beyond <code>end_date</code>.</p>
+    </section>
+
+    <section class="page" id="generation-workflow">
+      <h1>Generation workflow</h1>
+      <p class="subtitle">The order used by the current generation engine.</p>
+      <ol>
+        <li>Check the output format, option names and base configuration, then validate and normalize
+          drift dictionaries. Checks that depend on the evolving resource pool run during generation,
+          before output is written.</li>
+        <li>Build the base process tree and one tree per control-flow drift in chronological order.
+          Each new tree must differ in its serialized representation from its predecessor; generation
+          retries up to 100 times. Prepare a playout pool of <code>max(200, num_traces)</code> traces
+          for each tree, filter empty traces, and fall back to the sorted activity list if a pool is empty.</li>
+        <li>Initialize distributions for the union of activities across all tree versions. Duration
+          and waiting means are drawn independently within ±40% of their base means; variances are
+          shared across activities. Pick dominant resources and a dominant region.</li>
+        <li>Generate arrivals using both arrival-rate and workload drift. At each current arrival
+          cursor, sample an exponential gap whose mean is the current arrival-gap level divided by
+          the current workload multiplier. A gap crossing a drift boundary uses the level at its
+          starting cursor. Stop before the next arrival exceeds the horizon. Generation rejects more
+          than <code>100 * num_traces + 1000</code> cases.</li>
+        <li>For each arrival, select the process-tree version using the case start and sample a trace
+          from its playout pool. Draw base durations, waiting gaps, resources, region and amount.
+          Store the original event start times in <code>base_starts</code>; the first gap is zero.</li>
+        <li>Apply reassignment, region, amount, waiting-time and pool-size drifts by start fraction.
+          Ties retain input order. Apply all duration drifts afterward, also by start fraction, so a
+          resource-specific slowdown follows the final resource assignment.</li>
+        <li>Recompute final event timestamps from changed gaps and durations, round both timestamps
+          to UTC whole seconds, and recompute duration from those timestamps. Assign sequential case
+          and event identifiers, build metadata, write the log, then write its sidecar.</li>
+      </ol>
+      <p>Event drifts use the stored, undrifted event start times throughout; final exported timestamps
+        can cross drift boundaries after timing changes. Reference times and per-event drift labels
+        are not exported. Workload changes arrivals during generation: there is no later case
+        duplication, deletion or variant-preservation pass. Resources have no capacity constraint;
+        activities are timed sequentially within each sampled trace.</p>
+      <p>Normal draws for durations, waiting gaps and amounts use the configured variance and are
+        clipped below at 0.1. Gradual amount and waiting-time changes interpolate distribution means
+        and variances before drawing new values; duration changes multiply existing values.</p>
     </section>
 
     <!-- Drift modes -->
@@ -602,9 +592,9 @@ tests/
       <h1>Drift modes</h1>
       <p class="subtitle">How the change is shaped over time.</p>
 
-      <p>Every drift declares a <code>mode</code> and a position. All positions are fractions of the time
-        horizon in <code>(0, 1)</code>, where <code>0.5</code> is the midpoint. The metadata records each
-        position as both a fraction and an absolute timestamp.</p>
+      <p>Positions are fractions of the time horizon in <code>(0, 1)</code>. Drifts on cases (process
+        tree, amount, region, arrivals) follow the case's start time; drifts on events (resources,
+        durations, waiting times) follow the event's start time before any drift is applied.</p>
 
       <table>
         <thead>
@@ -618,15 +608,20 @@ tests/
           <tr>
             <td><code>sudden</code></td>
             <td><code>drift_point</code></td>
-            <td>A hard switch: everything after <code>drift_point</code> uses the new behavior.</td>
+            <td>The new behavior applies from <code>drift_point</code> on.</td>
           </tr>
           <tr>
             <td><code>gradual</code></td>
             <td><code>start_point</code>, <code>end_point</code></td>
-            <td>A transition window: between the two points the new behavior is mixed in with a probability that rises linearly from 0 to 1.</td>
+            <td>The change phases in linearly across the window: a new process tree, dominant resource or
+              region is used with a probability rising from 0 to 1. Duration multipliers, arrival-gap
+              levels and workload multipliers are interpolated. Waiting-time and amount means and
+              variances are interpolated, then new values are drawn.</td>
           </tr>
         </tbody>
       </table>
+
+      <p>Drifts of the same type must not overlap or touch at an endpoint.</p>
     </section>
 
     <!-- Drift types -->
@@ -634,186 +629,90 @@ tests/
       <h1>Drift types</h1>
       <p class="subtitle">The nine drifts and exactly what each one changes.</p>
 
-      <p>A drift's <code>type</code> selects the mechanism. Perspectives (intra-case, resource,
-        inter-case) are a documentation grouping only — <code>generate_log</code> dispatches purely on
-        <code>type</code>.</p>
+      <p>A drift is a dict with a <code>type</code>, a <code>mode</code>, its position keys and the
+        type's parameters; any other key is an error. The perspective is a grouping only.</p>
 
       <table>
         <thead>
           <tr>
-            <th>Perspective</th>
             <th>Type</th>
+            <th>Perspective</th>
             <th>What changes</th>
-            <th>Type-specific params</th>
+            <th>Parameters (default)</th>
           </tr>
         </thead>
         <tbody>
-          <tr><td>intra-case</td><td><code>control_flow</code></td><td>Activity-ordering structure (a different process tree).</td><td><code>num_activities</code>, <code>tree_weights</code></td></tr>
-          <tr><td>resource</td><td><code>pool_size</code></td><td>Resources added or removed; durations scale the opposite way.</td><td><code>delta</code>, <code>duration_factor</code></td></tr>
-          <tr><td>resource</td><td><code>reassignment</code></td><td>A new dominant resource per activity.</td><td>—</td></tr>
-          <tr><td>resource</td><td><code>workload</code></td><td>Traces duplicated or dropped; per-resource load shifts.</td><td><code>workload_factor</code></td></tr>
-          <tr><td>resource</td><td><code>duration</code></td><td>Processing time of the given resources is scaled.</td><td><code>resources</code>, <code>factor</code></td></tr>
-          <tr><td>inter-case</td><td><code>waiting_time</code></td><td>The mean waiting gap between consecutive events of a case shifts (all activities at once).</td><td><code>mean</code>, <code>variance</code></td></tr>
-          <tr><td>inter-case</td><td><code>amount</code></td><td>Case amounts drawn from a shifted distribution.</td><td><code>mean</code>, <code>variance</code></td></tr>
-          <tr><td>inter-case</td><td><code>arrival_rate</code></td><td>The mean gap between case arrivals changes.</td><td><code>inter_arrival</code> or <code>factor</code></td></tr>
-          <tr><td>inter-case</td><td><code>region</code></td><td>A new dominant region for later cases.</td><td>—</td></tr>
+          <tr><td><code>control_flow</code></td><td>intra-case</td><td>Cases are played out from a new, different process tree.</td><td><code>num_activities</code>, <code>tree_weights</code> (base values)</td></tr>
+          <tr><td><code>pool_size</code></td><td>resource</td><td><code>delta</code> resources are added or removed. Events of removed resources move to the remaining pool. Added resources become dominant for distinct activities until the activities run out. Affected event durations are multiplied by <code>duration_factor</code> for shrinkage, or its reciprocal for growth. Any positive factor is accepted; the default 1.2 makes shrinkage slower and growth faster, while values below 1 reverse this direction.</td><td><code>delta</code> (−2), <code>duration_factor</code> (1.2)</td></tr>
+          <tr><td><code>reassignment</code></td><td>resource</td><td>Every activity gets a new dominant resource.</td><td>—</td></tr>
+          <tr><td><code>workload</code></td><td>resource</td><td>The previous workload multiplier is multiplied by <code>workload_factor</code>. Arrival-gap mean is divided by that level, producing more or fewer sampled arrivals. All cases follow the other drift passes. With no other arrival-rate change, a sudden workload factor <code>w</code> has the same arrival-gap rule as an <code>arrival_rate</code> factor <code>1 / w</code>; metadata still records different drift types.</td><td><code>workload_factor</code> (required)</td></tr>
+          <tr><td><code>duration</code></td><td>resource</td><td>Processing times of the given resources are multiplied by <code>factor</code>.</td><td><code>resources</code> (<code>"all"</code>, a count <code>N</code> for <code>res_01</code>…<code>res_N</code>, or a list of names), <code>factor</code> (1.5)</td></tr>
+          <tr><td><code>waiting_time</code></td><td>inter-case</td><td>Waiting gaps between consecutive events are drawn with the new mean and/or variance; a new mean applies to all activities.</td><td><code>mean</code> and/or <code>variance</code></td></tr>
+          <tr><td><code>amount</code></td><td>inter-case</td><td>Case amounts are drawn from the new distribution.</td><td><code>mean</code> and/or <code>variance</code></td></tr>
+          <tr><td><code>arrival_rate</code></td><td>inter-case</td><td>The arrival-gap level becomes <code>inter_arrival</code> minutes, or its previous level is multiplied by <code>factor</code>. Successive relative factors accumulate. Workload divides the resulting level during arrival sampling.</td><td>Exactly one of <code>inter_arrival</code> or <code>factor</code></td></tr>
+          <tr><td><code>region</code></td><td>inter-case</td><td>A new dominant region is chosen.</td><td>—</td></tr>
         </tbody>
       </table>
 
-      <h2>Example valid drift specs</h2>
-      <p>The following <code>drifts</code> list is valid with the default generator labels
-        (<code>res_01</code> ... <code>res_08</code> and <code>region_1</code> ... <code>region_4</code>).
-        Use any subset of these dicts; if you add multiple drifts of the same <code>type</code>, their
-        windows must not overlap.</p>
+      <p>A dominant resource or region is drawn with probability 0.8; otherwise the draw is uniform over the
+        whole pool, which includes the dominant one.
+        A valid list with every type (default labels):</p>
       <pre><code>drifts = [
-    {
-        "type": "control_flow",
-        "mode": "sudden",
-        "drift_point": 0.35,
-        "num_activities": 9,
-        "tree_weights": {"sequence": 0.50, "choice": 0.30, "parallel": 0.15, "loop": 0.05},
-    },
-    {
-        "type": "pool_size",
-        "mode": "gradual",
-        "start_point": 0.20,
-        "end_point": 0.30,
-        "delta": 2,
-        "duration_factor": 1.25,
-    },
-    {"type": "reassignment", "mode": "sudden", "drift_point": 0.40},
-    {
-        "type": "workload",
-        "mode": "gradual",
-        "start_point": 0.70,
-        "end_point": 0.85,
-        "workload_factor": 1.40,
-    },
-    {
-        "type": "duration",
-        "mode": "sudden",
-        "drift_point": 0.55,
-        "resources": ["res_01", "res_02"],
-        "factor": 1.80,
-    },
-    {
-        "type": "waiting_time",
-        "mode": "gradual",
-        "start_point": 0.45,
-        "end_point": 0.60,
-        "mean": 45.0,
-        "variance": 80.0,
-    },
-    {
-        "type": "amount",
-        "mode": "sudden",
-        "drift_point": 0.65,
-        "mean": 3000.0,
-        "variance": 90000.0,
-    },
-    {
-        "type": "arrival_rate",
-        "mode": "sudden",
-        "drift_point": 0.50,
-        "inter_arrival": 240.0,
-    },
-    {"type": "region", "mode": "gradual", "start_point": 0.75, "end_point": 0.90},
+    {"type": "control_flow", "mode": "sudden", "drift_point": 0.35, "num_activities": 9},
+    {"type": "pool_size", "mode": "gradual", "start_point": 0.2, "end_point": 0.3, "delta": 2},
+    {"type": "reassignment", "mode": "sudden", "drift_point": 0.4},
+    {"type": "workload", "mode": "gradual", "start_point": 0.7, "end_point": 0.85, "workload_factor": 1.4},
+    {"type": "duration", "mode": "sudden", "drift_point": 0.55, "resources": ["res_01", "res_02"], "factor": 1.8},
+    {"type": "waiting_time", "mode": "gradual", "start_point": 0.45, "end_point": 0.6, "mean": 45},
+    {"type": "amount", "mode": "sudden", "drift_point": 0.65, "mean": 3000, "variance": 90000},
+    {"type": "arrival_rate", "mode": "sudden", "drift_point": 0.5, "factor": 0.5},
+    {"type": "region", "mode": "gradual", "start_point": 0.75, "end_point": 0.9},
 ]</code></pre>
-
-      <p>For <code>arrival_rate</code>, use either an absolute <code>inter_arrival</code> value in minutes
-        as shown above or a relative <code>factor</code>, for example
-        <code>{"type": "arrival_rate", "mode": "sudden", "drift_point": 0.50, "factor": 0.5}</code>.</p>
-
-      <h2>What each drift does</h2>
-
-      <h3><code>control_flow</code> · intra-case</h3>
-      <p>Cases after the drift are played out from a <em>different</em> process tree, so the
-        activity-ordering (trace variants) structure changes. The new tree is built from the drift's
-        <code>num_activities</code> and <code>tree_weights</code>.
-        In <strong>sudden</strong> mode every case after <code>drift_point</code> uses the new tree; in
-        <strong>gradual</strong> mode a case in the window picks the new tree with the rising window
-        probability.</p>
-
-      <h3><code>pool_size</code> · resource</h3>
-      <p><code>delta</code> adds (<code>+</code>) or removes (<code>−</code>) resources at the drift.
-        When it shrinks, the removed resources' later events are redistributed to the rest; when it
-        grows, each new resource becomes dominant for a free activity. Durations scale the opposite way
-        by <code>duration_factor</code> (fewer resources → slower, more → faster). <strong>Gradual</strong>
-        mode ramps the reassignment and the duration scaling across the window.</p>
-
-      <h3><code>reassignment</code> · resource</h3>
-      <p>A new dominant resource is chosen for every activity and the resource column is re-filled after
-        the drift (keeping 80% dominance). In <strong>gradual</strong> mode the share of events that use
-        the new mapping rises across the window. The before/after dominance maps are written to the
-        metadata.</p>
-
-      <h3><code>workload</code> · resource</h3>
-      <p>After the drift, <code>workload_factor</code> sets how many traces to add or remove
-        (<code>1.0</code> = no change). Added traces are duplicates of existing ones with freshly drawn
-        timing, amount, resources and region; removals never drop the last instance of a variant. The
-        total trace count may change. <strong>Gradual</strong> mode spreads the
-        duplicates across the window.</p>
-
-      <h3><code>duration</code> · resource</h3>
-      <p>The processing time of the given resources' later events is multiplied by <code>factor</code>
-        ("these resources slow down / speed up"). <code>resources</code> may be <code>"all"</code>, a
-        count (the first N resources), or an explicit list. <strong>Gradual</strong> mode ramps the
-        factor from 1 to its target across the window.</p>
-
-      <h3><code>waiting_time</code> · inter-case</h3>
-      <p>The mean of the waiting gap between events shifts to <code>mean</code> after the drift — the
-        main driver of throughput time. A gap is the idle time between consecutive events of the same
-        case, and every activity's waiting distribution is updated to the new
-        (<code>mean</code>, <code>variance</code>), so all activities shift at once.
-        <strong>Gradual</strong> mode blends each gap from its old value toward the new mean across the
-        window.</p>
-
-      <h3><code>amount</code> · inter-case</h3>
-      <p>Case amounts after the drift are drawn from a shifted distribution (<code>mean</code>,
-        <code>variance</code>). <strong>Gradual</strong> mode interpolates the mean and variance across
-        the window.</p>
-
-      <h3><code>arrival_rate</code> · inter-case</h3>
-      <p>The mean inter-arrival gap changes after the drift, set by a new absolute
-        <code>inter_arrival</code> or a <code>factor</code> applied to the base. Cases arrive denser or
-        sparser. <strong>Gradual</strong> mode moves the mean across the window.</p>
-
-      <h3><code>region</code> · inter-case</h3>
-      <p>A new dominant region is chosen and the region of later cases is re-filled (keeping 80%
-        dominance). <strong>Gradual</strong> mode raises the share of cases using the new region across
-        the window.</p>
     </section>
 
     <!-- Output -->
     <section class="page" id="output">
       <h1>Output &amp; metadata</h1>
-      <p class="subtitle">An XES or CSV log and a readable metadata sidecar.</p>
+      <p class="subtitle">An XES or CSV log and a readable ground-truth sidecar.</p>
 
-      <p>Each run writes two files next to <code>output_path</code> (the log suffix follows
-        <code>format</code>):</p>
+      <p>Each run writes two files next to <code>output_path</code>:</p>
       <pre><code>&lt;name&gt;.xes   (or &lt;name&gt;.csv)
 &lt;log_name&gt;_meta.md</code></pre>
 
-      <h3>Log columns</h3>
-      <p>Events carry:</p>
-      <p>
-        <code>event:id</code>,
-        <code>case:concept:name</code>,
-        <code>concept:name</code>,
-        <code>start_timestamp</code>,
-        <code>time:timestamp</code>,
-        <code>event:duration_min</code>,
-        <code>org:resource</code>
-      </p>
-      <p>Each case carries <code>case:amount</code> and <code>case:region</code>. For XES the full
-        metadata is also embedded as a log-level <code>rheon:metadata</code> attribute.</p>
+      <h3>Log</h3>
+      <p>Events carry <code>event:id</code>, <code>concept:name</code>, <code>start_timestamp</code>,
+        <code>time:timestamp</code> (completion), <code>event:duration_min</code> and
+        <code>org:resource</code>. Cases carry <code>amount</code> and <code>region</code>, which are
+        <code>case:amount</code> and <code>case:region</code> in the CSV and in pm4py DataFrames.
+        Timestamps are UTC, in whole seconds. The XES log also embeds the full metadata as JSON in the
+        log attribute <code>rheon:metadata</code>.</p>
+      <p>The CSV has nine columns, in order: <code>event:id</code>, <code>case:concept:name</code>,
+        <code>concept:name</code>, <code>start_timestamp</code>, <code>time:timestamp</code>,
+        <code>event:duration_min</code>, <code>org:resource</code>, <code>case:amount</code>,
+        <code>case:region</code>. In XES the case identifier is the trace's <code>concept:name</code>.
+        Each activity occurrence is one event carrying both timestamps; there are no separate lifecycle
+        rows. Amount and region are constant within a case. Amount is rounded to two decimals; duration
+        is calculated in minutes from the rounded timestamps. Rows are ordered by case and event start.</p>
+
+      <h3>Paper examples</h3>
+      <p>The paper uses three CSV logs, each with one sudden drift at the midpoint of the 2020 horizon:
+        <code>control_flow.csv</code> changes a five-step sequence into two three-step branches;
+        <code>resource_reassignment.csv</code> uses three resources and changes the dominant resource for each activity;
+        <code>arrival_rate.csv</code> increases the mean arrival gap by 20, reducing the configured
+        arrival rate to 5% of its initial level. Each log has one plot: side-by-side directly-follows count matrices,
+        side-by-side activity-resource frequency matrices, or a dotted chart. The matrices use the entire log, split by case
+        arrival for directly-follows counts and by event start for activity-resource counts;
+        the dotted chart orders cases by arrival.</p>
+      <p>Run <code>uv run --with matplotlib python example/generate_paper_examples.py</code> to
+        regenerate logs, metadata, plots and tables; append <code>--plots-only</code> to use saved logs
+        or <code>--regenerate resource_reassignment</code> to resample only the resource example.
+        Settings, CSV hashes and measured results are recorded under <code>paper/generated</code>.</p>
 
       <h3>Metadata sidecar</h3>
-      <p>The <code>&lt;log_name&gt;_meta.md</code> file is the ground truth, in three sections:</p>
       <ul>
-        <li><strong>General parameters</strong> — the structural, temporal and attribute parameters of the run.</li>
-        <li><strong>Base distributions</strong> — the starting state: every activity's dominant resource and its duration and waiting distributions <code>(mean, var)</code>, plus the case-level amount distribution, inter-arrival mean and dominant region.</li>
-        <li><strong>Drifts</strong> — each drift with its mode and drift point or window (as both a horizon fraction and an absolute timestamp), followed by exactly which distributions or assignments it changed, per activity / resource.</li>
+        <li><strong>General parameters</strong>: the run's parameters plus the generated trace, event and variant counts.</li>
+        <li><strong>Base distributions</strong>: the base process tree, each activity's dominant resource and duration and waiting <code>(mean, variance)</code>, plus the case amount, inter-arrival mean and dominant region.</li>
+        <li><strong>Drifts</strong>: each drift's point or window (as fraction and timestamp) and exactly what it changed, before → after: process trees, resource maps, distributions or rates.</li>
       </ul>
     </section>
 
@@ -821,58 +720,26 @@ tests/
 </div>
 
 <script>
-  // Navigation
-  const navItems = document.querySelectorAll('.nav-item[data-target]');
+  // Navigation: the URL hash selects the page, so every in-page link and the back button work
   const pages = document.querySelectorAll('.page');
-  const cards = document.querySelectorAll('.card[data-target]');
+  const navItems = document.querySelectorAll('.nav-item');
 
-  function showPage(targetId) {
-    if (!targetId) return;
-    let found = false;
-    pages.forEach(p => {
-      const active = p.id === targetId;
-      p.classList.toggle('active', active);
-      if (active) found = true;
-    });
-    if (!found) return;
+  function showPage() {
+    const target = document.getElementById(location.hash.slice(1));
+    const id = target && target.classList.contains('page') ? target.id : 'welcome';
+    pages.forEach(p => p.classList.toggle('active', p.id === id));
+    navItems.forEach(n => n.classList.toggle('active', n.getAttribute('href') === '#' + id));
 
-    // Sidebar active state: last matching nav-item with this target
-    navItems.forEach(n => n.classList.remove('active'));
-    const matches = document.querySelectorAll(`.nav-item[data-target="${targetId}"]`);
-    if (matches.length) {
-      const active = matches[matches.length - 1];
-      active.classList.add('active');
-      // On phones the sidebar is a horizontal strip, scroll the active item into it
-      const strip = active.parentNode;
-      strip.scrollLeft = active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2;
-    }
+    // On phones the sidebar is a horizontal strip, scroll the active item into it
+    const active = document.querySelector('.nav-item.active');
+    const strip = active.parentNode;
+    strip.scrollLeft = active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2;
 
-    // Update URL hash without scrolling
-    if (history.replaceState) {
-      history.replaceState(null, '', '#' + targetId);
-    }
-
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    window.scrollTo(0, 0);
   }
 
-  navItems.forEach(item => {
-    item.addEventListener('click', e => {
-      e.preventDefault();
-      const target = item.getAttribute('data-target');
-      showPage(target);
-    });
-  });
-
-  cards.forEach(card => {
-    card.addEventListener('click', e => {
-      e.preventDefault();
-      showPage(card.getAttribute('data-target'));
-    });
-  });
-
-  // Initial route from hash
-  const initial = location.hash ? location.hash.slice(1) : 'welcome';
-  showPage(initial);
+  window.addEventListener('hashchange', showPage);
+  showPage();
 
   // Wrap every table so it scrolls sideways on narrow screens
   document.querySelectorAll('main table').forEach(table => {
