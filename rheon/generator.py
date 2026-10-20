@@ -382,7 +382,8 @@ def _apply_reassignment(config, cases, drift, dist, state, position, rng) -> dic
             if ramp > 0 and (drift.mode == "sudden" or rng.random() < ramp):
                 case.resources[index] = _draw_dominant(new[case.activities[index]], active, rng)
     state["dominant_resource"] = new
-    return {"dominant_before": old, "dominant_after": new}
+    # a copy, since later pool_size drifts change the state's dominants in place
+    return {"dominant_before": old, "dominant_after": dict(new)}
 
 
 def _apply_region(config, cases, drift, dist, state, position, rng) -> dict[str, Any]:

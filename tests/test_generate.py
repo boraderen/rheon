@@ -164,6 +164,17 @@ def test_chained_drifts_record_their_own_before_values(tmp_path):
     assert changes["d04"]["waiting_mean_after"] == 200
 
 
+def test_reassignment_record_is_not_changed_by_later_pool_drifts(tmp_path):
+    out = tmp_path / "log.xes"
+    rheon.generate_log([
+        {"type": "reassignment", "mode": "sudden", "drift_point": 0.3},
+        {"type": "pool_size", "mode": "sudden", "drift_point": 0.6, "delta": 3},
+    ], out, num_traces=200, num_resources=4, num_activities=5)
+
+    changes = {drift["id"]: drift["changes"] for drift in _read_embedded_metadata(out)["drifts"]}
+    assert set(changes["d02"]["added_resources"]).isdisjoint(changes["d01"]["dominant_after"].values())
+
+
 # --- Drift effects -----------------------------------------------------------
 
 
