@@ -66,26 +66,3 @@ runs. Save generated logs and metadata when exact experimental replication is ne
 uv run python example/generate_log.py   # writes example/example.csv and example/example_meta.md
 uv run pytest
 ```
-
-The paper examples use three logs, each with one sudden midpoint drift, and one plot per log:
-`control_flow.csv` changes a five-step sequence into two short branches (side-by-side directly-follows count matrices),
-`resource_reassignment.csv` uses three resources and changes each activity's dominant resource
-(side-by-side activity-resource frequency matrices), and `arrival_rate.csv` increases the arrival gap by 20× so the arrival rate drops to
-5% (dotted chart). The matrices use the entire log, split by case arrival for directly-follows counts and event
-start for activity-resource counts. The plots retain the notebooks' counting and case-ordering logic. Rebuild them with:
-
-```bash
-uv run --with matplotlib python example/generate_paper_examples.py
-uv run --with matplotlib python example/generate_paper_examples.py --plots-only
-uv run --with matplotlib python example/generate_paper_examples.py --regenerate resource_reassignment
-latexmk -pdf -cd paper/paper.tex
-```
-
-The first command resamples the logs and updates their metadata, plots and paper table rows.
-The second rebuilds plots and tables from saved logs. The third resamples only the resource log
-and rebuilds the plots and tables. Generated files are under `paper/logs`,
-`paper/figures` and `paper/generated`; the manifest records settings, package versions and CSV hashes.
-The manifest also records measured drift signals. Each base process has five activities, no
-parallelism or loops and three regions. The reassignment example has three resources; the other
-two have four; the control-flow change adds a choice.
-The local `paper/` directory is ignored by Git, so keep its artifacts alongside the paper when sharing it.

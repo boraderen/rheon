@@ -364,9 +364,7 @@
     <a class="nav-item" href="#welcome">Welcome</a>
     <a class="nav-item" href="#installation">Installation</a>
     <a class="nav-item" href="#quick-start">Quick start</a>
-    <a class="nav-item" href="#package-structure">Package structure</a>
     <a class="nav-item" href="#api">API</a>
-    <a class="nav-item" href="#generation-workflow">Generation workflow</a>
     <a class="nav-item" href="#drift-modes">Drift modes</a>
     <a class="nav-item" href="#drift-types">Drift types</a>
     <a class="nav-item" href="#output">Output &amp; metadata</a>
@@ -403,20 +401,6 @@
             </svg>
           </div>
           <h3>Quick start</h3>
-        </a>
-
-        <a class="card" href="#package-structure">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
-                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 4.5h6v5H4z"/>
-              <path d="M14 4.5h6v5h-6z"/>
-              <path d="M4 14.5h6v5H4z"/>
-              <path d="M10 7h4"/>
-              <path d="M7 9.5v5"/>
-            </svg>
-          </div>
-          <h3>Package structure</h3>
         </a>
 
         <a class="card" href="#api">
@@ -489,24 +473,6 @@ rheon.generate_log(drifts, "out/example.xes", num_traces=2000, num_activities=8)
 log = pm4py.read_xes("out/example.xes")</code></pre>
     </section>
 
-    <!-- Package structure -->
-    <section class="page" id="package-structure">
-      <h1>Package structure</h1>
-      <p class="subtitle">One public function, <code>rheon.generate_log</code>, on top of six modules.</p>
-
-      <pre><code>rheon/
-  __init__.py      exports generate_log
-  config.py        column keys, labels, parameter validation
-  drifts.py        drift validation and timeline helpers
-  process_tree.py  build process trees and play out traces
-  generator.py     the generation engine and generate_log
-  metadata.py      build and render the ground-truth metadata
-  write.py         write XES / CSV and the metadata sidecar
-example/
-  generate_log.py  one drift per perspective
-tests/             pytest suite</code></pre>
-    </section>
-
     <!-- API -->
     <section class="page" id="api">
       <h1>API</h1>
@@ -546,45 +512,6 @@ tests/             pytest suite</code></pre>
         <code>(end_date − start_date) / num_traces</code> before arrival-rate or workload changes.
         The first case starts exactly at <code>start_date</code>. The horizon bounds case arrivals;
         event completions can extend beyond <code>end_date</code>.</p>
-    </section>
-
-    <section class="page" id="generation-workflow">
-      <h1>Generation workflow</h1>
-      <p class="subtitle">The order used by the current generation engine.</p>
-      <ol>
-        <li>Check the output format, option names and base configuration, then validate and normalize
-          drift dictionaries. Checks that depend on the evolving resource pool run during generation,
-          before output is written.</li>
-        <li>Build the base process tree and one tree per control-flow drift in chronological order.
-          Each new tree must differ in its serialized representation from its predecessor; generation
-          retries up to 100 times. Prepare a playout pool of <code>max(200, num_traces)</code> traces
-          for each tree, filter empty traces, and fall back to the sorted activity list if a pool is empty.</li>
-        <li>Initialize distributions for the union of activities across all tree versions. Duration
-          and waiting means are drawn independently within ±40% of their base means; variances are
-          shared across activities. Pick dominant resources and a dominant region.</li>
-        <li>Generate arrivals using both arrival-rate and workload drift. At each current arrival
-          cursor, sample an exponential gap whose mean is the current arrival-gap level divided by
-          the current workload multiplier. A gap crossing a drift boundary uses the level at its
-          starting cursor. Stop before the next arrival exceeds the horizon. Generation rejects more
-          than <code>100 * num_traces + 1000</code> cases.</li>
-        <li>For each arrival, select the process-tree version using the case start and sample a trace
-          from its playout pool. Draw base durations, waiting gaps, resources, region and amount.
-          Store the original event start times in <code>base_starts</code>; the first gap is zero.</li>
-        <li>Apply reassignment, region, amount, waiting-time and pool-size drifts by start fraction.
-          Ties retain input order. Apply all duration drifts afterward, also by start fraction, so a
-          resource-specific slowdown follows the final resource assignment.</li>
-        <li>Recompute final event timestamps from changed gaps and durations, round both timestamps
-          to UTC whole seconds, and recompute duration from those timestamps. Assign sequential case
-          and event identifiers, build metadata, write the log, then write its sidecar.</li>
-      </ol>
-      <p>Event drifts use the stored, undrifted event start times throughout; final exported timestamps
-        can cross drift boundaries after timing changes. Reference times and per-event drift labels
-        are not exported. Workload changes arrivals during generation: there is no later case
-        duplication, deletion or variant-preservation pass. Resources have no capacity constraint;
-        activities are timed sequentially within each sampled trace.</p>
-      <p>Normal draws for durations, waiting gaps and amounts use the configured variance and are
-        clipped below at 0.1. Gradual amount and waiting-time changes interpolate distribution means
-        and variances before drawing new values; duration changes multiply existing values.</p>
     </section>
 
     <!-- Drift modes -->
@@ -693,20 +620,6 @@ tests/             pytest suite</code></pre>
         Each activity occurrence is one event carrying both timestamps; there are no separate lifecycle
         rows. Amount and region are constant within a case. Amount is rounded to two decimals; duration
         is calculated in minutes from the rounded timestamps. Rows are ordered by case and event start.</p>
-
-      <h3>Paper examples</h3>
-      <p>The paper uses three CSV logs, each with one sudden drift at the midpoint of the 2020 horizon:
-        <code>control_flow.csv</code> changes a five-step sequence into two three-step branches;
-        <code>resource_reassignment.csv</code> uses three resources and changes the dominant resource for each activity;
-        <code>arrival_rate.csv</code> increases the mean arrival gap by 20, reducing the configured
-        arrival rate to 5% of its initial level. Each log has one plot: side-by-side directly-follows count matrices,
-        side-by-side activity-resource frequency matrices, or a dotted chart. The matrices use the entire log, split by case
-        arrival for directly-follows counts and by event start for activity-resource counts;
-        the dotted chart orders cases by arrival.</p>
-      <p>Run <code>uv run --with matplotlib python example/generate_paper_examples.py</code> to
-        regenerate logs, metadata, plots and tables; append <code>--plots-only</code> to use saved logs
-        or <code>--regenerate resource_reassignment</code> to resample only the resource example.
-        Settings, CSV hashes and measured results are recorded under <code>paper/generated</code>.</p>
 
       <h3>Metadata sidecar</h3>
       <ul>
